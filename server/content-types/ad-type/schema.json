@@ -1,0 +1,42 @@
+{
+  "kind": "collectionType",
+  "collectionName": "ad_types",
+  "info": {
+    "singularName": "ad-type",
+    "pluralName": "ad-types",
+    "displayName": "Ad Type",
+    "description": ""
+  },
+  "options": {
+    "draftAndPublish": true
+  },
+  "pluginOptions": {},
+  "attributes": {
+    "thumbnail": {
+      "type": "media",
+      "multiple": true,
+      "required": false,
+      "allowedTypes": ["images", "files", "videos", "audios"]
+    },
+    "title": {
+      "type": "string"
+    },
+    "description": {
+      "type": "text"
+    },
+    "allow_video": {
+      "type": "boolean",
+      "default": false
+    },
+    "ad_type_id": {
+      "type": "uid",
+      "targetField": "title"
+    },
+    "ad_spots": {
+      "type": "relation",
+      "relation": "manyToMany",
+      "target": "plugin::custom-ui.ad-spot",
+      "mappedBy": "ad_types"
+    }
+  }
+}

@@ -1,0 +1,38 @@
+{
+  "kind": "collectionType",
+  "collectionName": "ad_spots",
+  "info": {
+    "singularName": "ad-spot",
+    "pluralName": "ad-spots",
+    "displayName": "Ad Spot",
+    "description": ""
+  },
+  "options": {
+    "draftAndPublish": true
+  },
+  "pluginOptions": {},
+  "attributes": {
+    "ad_spot_title": {
+      "type": "string"
+    },
+    "ad_spot_display_text": {
+      "type": "string"
+    },
+    "ad_spot_id": {
+      "type": "uid",
+      "targetField": "ad_spot_title"
+    },
+    "ad_screens": {
+      "type": "relation",
+      "relation": "oneToMany",
+      "target": "plugin::custom-ui.ad-screen",
+      "mappedBy": "ad_spot"
+    },
+    "ad_types": {
+      "type": "relation",
+      "relation": "manyToMany",
+      "target": "plugin::custom-ui.ad-type",
+      "inversedBy": "ad_spots"
+    }
+  }
+}

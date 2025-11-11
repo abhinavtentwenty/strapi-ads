@@ -1,0 +1,30 @@
+{
+  "kind": "collectionType",
+  "collectionName": "ad_statuses",
+  "info": {
+    "singularName": "ad-status",
+    "pluralName": "ad-statuses",
+    "displayName": "Ad Status",
+    "description": ""
+  },
+  "options": {
+    "draftAndPublish": true
+  },
+  "pluginOptions": {},
+  "attributes": {
+    "status_title": {
+      "type": "string"
+    },
+    "status_id": {
+      "type": "uid"
+    },
+    "status_description": {
+      "type": "text"
+    },
+    "status_color": {
+      "type": "customField",
+      "regex": "^#([A-Fa-f0-9]{6}|[A-Fa-f0-9]{3})$",
+      "customField": "plugin::color-picker.color"
+    }
+  }
+}

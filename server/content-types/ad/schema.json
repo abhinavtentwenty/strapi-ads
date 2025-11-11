@@ -1,0 +1,78 @@
+{
+  "kind": "collectionType",
+  "collectionName": "ads",
+  "info": {
+    "singularName": "ad",
+    "pluralName": "ads",
+    "displayName": "Ad"
+  },
+  "options": {
+    "draftAndPublish": true
+  },
+  "pluginOptions": {},
+  "attributes": {
+    "ad_name": {
+      "type": "string"
+    },
+    "ad_id": {
+      "type": "uid",
+      "targetField": "ad_name"
+    },
+    "ad_status": {
+      "type": "relation",
+      "relation": "oneToOne",
+      "target": "plugin::custom-ui.ad-status"
+    },
+    "ad_start_date": {
+      "required": true,
+      "type": "datetime"
+    },
+    "ad_end_date": {
+      "type": "datetime"
+    },
+    "ad_type": {
+      "type": "relation",
+      "relation": "oneToOne",
+      "target": "plugin::custom-ui.ad-type"
+    },
+    "ad_headline": {
+      "type": "string"
+    },
+    "ad_description": {
+      "type": "text"
+    },
+    "ad_image": {
+      "allowedTypes": [
+        "images",
+        "files",
+        "videos",
+        "audios"
+      ],
+      "type": "media",
+      "multiple": true
+    },
+    "ad_video_url": {
+      "type": "string"
+    },
+    "ad_external_url": {
+      "type": "string"
+    },
+    "ad_destination_models": {
+      "type": "enumeration",
+      "enum": [
+        "business",
+        "lifestyle",
+        "news"
+      ]
+    },
+    "ad_destination_page": {
+      "type": "string"
+    },
+    "campaign": {
+      "type": "relation",
+      "relation": "manyToOne",
+      "target": "plugin::custom-ui.campaign",
+      "inversedBy": "ads"
+    }
+  }
+}

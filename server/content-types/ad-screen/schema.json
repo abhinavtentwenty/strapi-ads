@@ -1,0 +1,28 @@
+{
+  "kind": "collectionType",
+  "collectionName": "ad_screens",
+  "info": {
+    "singularName": "ad-screen",
+    "pluralName": "ad-screens",
+    "displayName": "Ad Screen"
+  },
+  "options": {
+    "draftAndPublish": true
+  },
+  "pluginOptions": {},
+  "attributes": {
+    "ad_screen_title": {
+      "type": "string"
+    },
+    "ad_screen_id": {
+      "type": "uid",
+      "targetField": "ad_screen_title"
+    },
+    "ad_spot": {
+      "type": "relation",
+      "relation": "manyToOne",
+      "target": "plugin::custom-ui.ad-spot",
+      "inversedBy": "ad_screens"
+    }
+  }
+}

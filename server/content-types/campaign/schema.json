@@ -1,0 +1,47 @@
+{
+  "kind": "collectionType",
+  "collectionName": "campaigns",
+  "info": {
+    "singularName": "campaign",
+    "pluralName": "campaigns",
+    "displayName": "Campaign",
+    "description": ""
+  },
+  "options": {
+    "draftAndPublish": true
+  },
+  "pluginOptions": {},
+  "attributes": {
+    "campaign_name": {
+      "type": "string"
+    },
+    "campaign_id": {
+      "type": "uid",
+      "targetField": "campaign_name"
+    },
+    "campaign_entity_type": {
+      "type": "enumeration",
+      "enum": ["adgm_entity", "external_entity"]
+    },
+    "campaign_entity_name": {
+      "type": "string"
+    },
+    "campaign_entity_license_number": {
+      "type": "string"
+    },
+    "campaign_status": {
+      "type": "relation",
+      "relation": "oneToOne",
+      "target": "plugin::custom-ui.ad-status"
+    },
+    "ads": {
+      "type": "relation",
+      "relation": "oneToMany",
+      "target": "plugin::custom-ui.ad",
+      "mappedBy": "campaign"
+    },
+    "archive": {
+      "type": "boolean"
+    }
+  }
+}

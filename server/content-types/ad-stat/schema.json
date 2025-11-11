@@ -1,0 +1,28 @@
+{
+  "kind": "collectionType",
+  "collectionName": "ad_stats",
+  "info": {
+    "singularName": "ad-stat",
+    "pluralName": "ad-stats",
+    "displayName": "Ad Stat",
+    "description": ""
+  },
+  "options": {
+    "draftAndPublish": false
+  },
+  "pluginOptions": {},
+  "attributes": {
+    "ad_id": {
+      "type": "string"
+    },
+    "stat_date": {
+      "type": "date"
+    },
+    "impressions": {
+      "type": "biginteger"
+    },
+    "clicks": {
+      "type": "biginteger"
+    }
+  }
+}
