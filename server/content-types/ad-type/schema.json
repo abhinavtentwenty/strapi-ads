@@ -35,7 +35,7 @@
     "ad_spots": {
       "type": "relation",
       "relation": "manyToMany",
-      "target": "plugin::custom-ui.ad-spot",
+      "target": "plugin::strapi-ads.ad-spot",
       "mappedBy": "ad_types"
     }
   }

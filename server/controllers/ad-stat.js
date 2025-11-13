@@ -6,7 +6,7 @@ const {errorResponse}=require("../../../../../helpers/error-handler");
  */
 
 const { createCoreController } = require('@strapi/strapi').factories;
-const modelName = 'plugin::custom-ui.ad-stat';
+const modelName = 'plugin::strapi-ads.ad-stat';
 
 const yup = require('yup');
 

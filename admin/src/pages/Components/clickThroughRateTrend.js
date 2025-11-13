@@ -1,4 +1,4 @@
-//@ts-nocheck
+// @ts-nocheck
 import { Area, AreaChart, CartesianGrid, XAxis, YAxis } from 'recharts';
 import { ChartContainer, ChartTooltip, ChartTooltipContent } from '../../components/ui/charts';
 import React from 'react';

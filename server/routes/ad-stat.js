@@ -6,4 +6,4 @@
 
 const { createCoreRouter } = require('@strapi/strapi').factories;
 
-module.exports = createCoreRouter('plugin::custom-ui.ad-stat');
+module.exports = createCoreRouter('plugin::strapi-ads.ad-stat');

@@ -1,112 +1,40 @@
-//@ts-nocheck
+// @ts-nocheck
 import '../../global.css';
-import React from 'react';
-import { useHistory } from 'react-router-dom';
+import React, { useEffect } from 'react';
+import { useLocation, useHistory } from 'react-router-dom';
+import qs from 'qs';
 import { useForm } from 'react-hook-form';
 import {
   Button,
   Dots,
-  IconButton,
-  MenuItem,
   NextLink,
   PageLink,
   Pagination,
   PreviousLink,
   Searchbar,
-  SimpleMenu,
   SingleSelect,
   SingleSelectOption,
   MultiSelect,
   MultiSelectOption,
-  Table,
-  Tbody,
-  Td,
-  Th,
-  Thead,
-  Tr,
-  Badge,
   Box,
   Flex,
   Typography,
-  Grid,
-  GridItem,
   TabGroup,
   Tabs,
-  Tab,
   TabPanels,
   TabPanel,
 } from '@strapi/design-system';
 
-import {
-  CarretDown,
-  ChevronDown,
-  CrossCircle,
-  Duplicate,
-  Eye,
-  More,
-  Pencil,
-  Play,
-  Plus,
-  Bell,
-  List,
-  Calendar,
-} from '@strapi/icons';
-// import { EmptyDocuments } from "@strapi/icons/symbols";
-import qs from 'qs';
-import { useState } from 'react';
-// import { useNavigate } from "react-router-dom";
-import useSWR from 'swr';
-// import { campaigns } from '../../utils/campaings';
-import useCampaigns from '../../components/hooks/useCampaign';
-// import { CampaignEndpoints } from "../api/endpoints";
-// import { useDebounce } from "../utils/useDebounce";
+import { Plus, List, Calendar } from '@strapi/icons';
 
-const DummyData = [
-  {
-    id: 1,
-    title: 'Total Campaigns',
-    currentValue: 150,
-    isPositive: true,
-    differenceValue: 2,
-  },
-  {
-    id: 2,
-    title: 'active ads',
-    currentValue: 3000,
-    isPositive: false,
-    differenceValue: 100,
-  },
-  {
-    id: 3,
-    title: 'Total Impressions',
-    currentValue: 500,
-    isPositive: true,
-    differenceValue: 50,
-  },
-  {
-    id: 4,
-    title: 'Total CLicks',
-    currentValue: 500,
-    isPositive: true,
-    differenceValue: 50,
-  },
-  {
-    id: 5,
-    title: 'CTR',
-    currentValue: 500,
-    isPositive: true,
-    differenceValue: 50,
-  },
-];
+import { useState } from 'react';
+import useCampaigns from '../../components/hooks/useCampaigns';
+// import { useDebounce } from "../utils/useDebounce";
+import TabButton from '../../components/elements/tabButton';
 
 import ListView from './listView';
 import TimelineView from './timelineView';
-import AttributeTabs from './tabs';
-import { cn } from '../../utils/utils';
 
-const TrStyles = 'text-xl text-[#62627B] uppercase font-bold';
-const TdStyles = 'text-2xl';
-import styled from 'styled-components';
 const Dashboard = () => {
   /**
    * ===============================
@@ -116,12 +44,26 @@ const Dashboard = () => {
    */
   const [status, setStatus] = useState(['all']);
   const [type, setType] = useState('all');
-  const [sitemap, setSitemap] = useState(null);
-  const [sitemapError, setSitemapError] = useState('');
+  const [time, setTime] = useState('all');
+
   const [search, setSearch] = useState('');
   // const debouncedSearch = useDebounce(search, 400);
   const [page, setPage] = useState(1);
-  const [pageSize, setPageSize] = useState(5);
+  const [pageSize, setPageSize] = useState(10);
+
+  const location = useLocation();
+  const history = useHistory();
+
+  const params = qs.parse(location.search, { ignoreQueryPrefix: true });
+  const activeTab = Number(params.tab) || 0;
+
+  const handleTabChange = (index) => {
+    const newParams = { ...params, tab: index };
+    history.replace({
+      pathname: location.pathname,
+      search: qs.stringify(newParams, { addQueryPrefix: true }),
+    });
+  };
 
   const {
     register,
@@ -130,83 +72,33 @@ const Dashboard = () => {
     formState: { errors },
   } = useForm();
 
-  const { campaigns, isLoading, isError } = useCampaigns();
+  const { campaigns, pagination, isLoading, isError } = useCampaigns({
+    page,
+    pageSize,
+    status,
+    type,
+    time,
+    search,
+  });
 
-  /**
-   * ===============================
-   * CONSTANTS
-   * All constants used for styling and configuration are grouped here.
-   * ===============================
-   */
+  const currentPage = pagination?.page || 1;
+  const totalPages = pagination?.pageCount || 1;
+  const paginatedCampaigns = campaigns;
+
   const TrStyles = 'text-xl text-[#62627B] uppercase font-bold';
   const TdStyles = 'text-2xl';
 
-  /**
-   * ===============================
-   * HOOKS & ENDPOINTS
-   * Data fetching and navigation logic.
-   * ===============================
-   */
-  const history = useHistory();
-
-  // --- API data commented out ---
-  // const filters = {};
-  // const queryString = qs.stringify(
-  //   debouncedSearch ? { q: debouncedSearch, filters } : { filters },
-  //   { encode: false }
-  // );
-  // const endpoint = CampaignEndpoints.getAll(queryString);
-  // const { data, error, isLoading } = useSWR(endpoint);
-  // const campaigns = data?.data || [];
-  // console.log("Campaigns data:", campaigns);
-
-  const totalPages = Math.ceil(campaigns.length / pageSize);
-  const paginatedCampaigns = campaigns.slice((page - 1) * pageSize, page * pageSize);
-
-  /**
-   * ===============================
-   * FUNCTIONS & COMPONENTS
-   * All helper functions and sub-components are grouped here for organization.
-   * ===============================
-   */
-
-  const TabButton = styled(Tab)`
-    padding: 0; /* remove Tab's default padding */
-    border: none;
-    background: transparent;
-
-    > div {
-      padding: 0 !important;
-      background: transparent !important;
-    }
-
-    &[aria-selected='true'] {
-      /* styles for active tab */
-      button {
-        background: #32324d !important; /* active bg */
-        color: #ffffff !important; /* white text */
-      }
-
-      /* ensure ALL text + icon parts become white */
-      svg,
-      svg path,
-      span,
-      p,
-      div {
-        color: #ffffff !important;
-        fill: #ffffff !important;
-      }
-    }
-
-    &[aria-disabled='true'] {
-      cursor: not-allowed;
-      opacity: 0.6;
-    }
-  `;
+  useEffect(() => {
+    if (currentPage > totalPages) setPage(1);
+  }, [totalPages]);
 
   return (
     <section className="py-16 !w-full overflow-hidden">
-      <TabGroup label="Manage your attribute">
+      <TabGroup
+        label="Manage your attribute"
+        selectedTabIndex={activeTab}
+        onTabChange={handleTabChange}
+      >
         <div className="flex items-center justify-between mb-10">
           <Flex direction="column" alignItems="flex-start" gap={2}>
             <Typography variant="alpha" className="h1 font-semibold" textColor="neutral900">
@@ -216,8 +108,6 @@ const Dashboard = () => {
               ADGM / Campaign Management
             </Typography>
           </Flex>
-          {/* {JSON.stringify(campaigns)} */}
-
           <Flex gap={2}>
             <Tabs>
               <TabButton>
@@ -238,18 +128,14 @@ const Dashboard = () => {
                 </Button>
               </TabButton>
             </Tabs>
-            <Button
-              size="L"
-              variant="tertiary"
-              onClick={() => history.push('custom-ui/create-campaign')}
-            >
+            <Button size="L" variant="tertiary" onClick={() => history.push('custom-ui/campaign')}>
               Export CSV
             </Button>
             <Button
               size="L"
               startIcon={<Plus />}
               variant="default"
-              onClick={() => history.push('custom-ui/create-campaign')}
+              onClick={() => history.push('campaigns/create')}
             >
               Create
             </Button>
@@ -289,7 +175,7 @@ const Dashboard = () => {
                   <SingleSelectOption value="banner">Banner</SingleSelectOption>
                   <SingleSelectOption value="video">Video</SingleSelectOption>
                 </SingleSelect>
-                <SingleSelect value={type} onChange={(value) => setType(String(value))} size="S">
+                <SingleSelect value={time} onChange={(value) => setTime(String(value))} size="S">
                   <SingleSelectOption value="all">All Time</SingleSelectOption>
                   <SingleSelectOption value="banner">Banner</SingleSelectOption>
                   <SingleSelectOption value="video">Video</SingleSelectOption>
@@ -318,9 +204,10 @@ const Dashboard = () => {
               }}
               size="S"
             >
-              <SingleSelectOption value="3">03</SingleSelectOption>
-              <SingleSelectOption value="5">05</SingleSelectOption>
-              <SingleSelectOption value="10">10</SingleSelectOption>
+              <SingleSelectOption value={10}>10</SingleSelectOption>
+              <SingleSelectOption value={20}>20</SingleSelectOption>
+              <SingleSelectOption value={50}>50</SingleSelectOption>
+              <SingleSelectOption value={100}>100</SingleSelectOption>
             </SingleSelect>
             <Typography variant="pi" textColor="neutral600" className="mr-2">
               Entries per page:
@@ -329,14 +216,15 @@ const Dashboard = () => {
           {/* Pagination */}
           {totalPages > 1 && (
             <div className="w-min float-end mt-6">
-              <Pagination activePage={page} pageCount={totalPages}>
+              <Pagination activePage={currentPage} pageCount={totalPages}>
                 <PreviousLink
                   as="button"
                   onClick={(e) => {
                     e.preventDefault();
-                    if (page > 1) setPage(page - 1);
+                    if (currentPage > 1) setPage(currentPage - 1);
                   }}
-                  disabled={page === 1}
+                  disabled={currentPage === 1}
+                  aria-label="Previous page"
                 >
                   Previous
                 </PreviousLink>
@@ -371,6 +259,7 @@ const Dashboard = () => {
                           e.preventDefault();
                           setPage(i);
                         }}
+                        aria-current={i === currentPage ? 'page' : undefined}
                       >
                         {i}
                       </PageLink>
@@ -397,9 +286,11 @@ const Dashboard = () => {
                 <NextLink
                   as="button"
                   onClick={(e) => {
-                    if (page < totalPages) setPage(page + 1);
+                    e.preventDefault();
+                    if (currentPage < totalPages) setPage(currentPage + 1);
                   }}
-                  disabled={page === totalPages}
+                  disabled={currentPage === totalPages}
+                  aria-label="Next page"
                 >
                   Next
                 </NextLink>

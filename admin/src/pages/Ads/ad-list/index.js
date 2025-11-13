@@ -1,17 +1,9 @@
 // @ts-nocheck
-import React, { useState } from 'react';
+import React, { useState, useEffect } from 'react';
 import { useHistory } from 'react-router-dom';
 import {
   Button,
-  Dots,
-  IconButton,
-  MenuItem,
-  NextLink,
-  PageLink,
-  Pagination,
-  PreviousLink,
   Searchbar,
-  SimpleMenu,
   SingleSelect,
   SingleSelectOption,
   MultiSelect,
@@ -26,141 +18,58 @@ import {
   Box,
   Flex,
   Typography,
-  Grid,
-  GridItem,
-  TabGroup,
-  Tabs,
-  Tab,
-  TabPanels,
-  TabPanel,
+  Combobox,
+  ComboboxOption,
+  NextLink,
+  PageLink,
+  Pagination,
+  PreviousLink,
 } from '@strapi/design-system';
-
-import {
-  CarretDown,
-  ChevronDown,
-  CrossCircle,
-  Duplicate,
-  Eye,
-  More,
-  Pencil,
-  Play,
-  Plus,
-  Bell,
-  List,
-  Calendar,
-} from '@strapi/icons';
+import { format } from 'date-fns';
+import { CarretDown } from '@strapi/icons';
 import CustomIconButton from '../../../components/elements/customIconButton';
 import Analytics from '../../../components/Icons/Analytics';
 import AdActionMenu from '../adActionMenu';
-import { Badge as BadgeCustom } from '../../../components/elements/badge';
+import BadgeCustom from '../../../components/elements/badge';
+import useAds from '../../../components/hooks/useAds';
+import useCampaigns from '../../../components/hooks/useCampaigns';
+import useAdStatus from '../../../components/hooks/useAdStatus';
+import useAdType from '../../../components/hooks/useAdType';
+
 const TrStyles = 'text-xl text-[#62627B] uppercase font-bold';
 const TdStyles = 'text-2xl';
 
 const AdList = () => {
   const history = useHistory();
-  const [status, setStatus] = useState(['all']);
-  const [type, setType] = useState('all');
-  const [sitemap, setSitemap] = useState(null);
-  const [sitemapError, setSitemapError] = useState('');
+  const [campaign, setCampaign] = useState('');
+  const [status, setStatus] = useState('all');
+  const [filter, setFilter] = useState('');
+  const [type, setType] = useState('');
   const [search, setSearch] = useState('');
-  const paginatedCampaigns = [
-    {
-      id: 2,
-      campaign_name: 'Doslyyy Perfumes pro',
-      campaign_id: 'doslyyy-perfumes-pro',
-      campaign_entity_type: 'adgm_entity',
-      campaign_entity_name: 'Dosly limited',
-      campaign_entity_license_number: '1234456',
-      createdAt: '2025-10-01T05:26:02.496Z',
-      updatedAt: '2025-10-01T05:26:02.496Z',
-      publishedAt: null,
-      archive: null,
-      ads: [
-        {
-          id: 2,
-          ad_name: 'Dummy1',
-          ad_id: 'dummy1',
-          ad_start_date: '2025-10-11T19:45:00.000Z',
-          ad_end_date: '2025-10-29T19:30:00.000Z',
-          ad_headline: 'dummy headline',
-          ad_description: 'dummy description okayyyyyy',
-          ad_video_url: null,
-          ad_external_url: null,
-          ad_destination_models: 'business',
-          ad_destination_page: null,
-          createdAt: '2025-10-01T05:23:44.880Z',
-          updatedAt: '2025-10-01T05:23:44.880Z',
-          publishedAt: null,
-        },
-      ],
-      campaign_status: {
-        id: 2,
-        status_title: 'active',
-        status_id: 'status-1',
-        status_description: 'Scheduled or ready for publishing',
-        createdAt: '2025-09-30T13:00:49.088Z',
-        updatedAt: '2025-09-30T13:00:49.088Z',
-        publishedAt: null,
-        status_color: '#45AF2E',
-      },
-    },
-    {
-      id: 1,
-      campaign_name: 'Doslyyy Perfumes',
-      campaign_id: 'doslyyy-perfumes',
-      campaign_entity_type: 'adgm_entity',
-      campaign_entity_name: 'Dosly limited',
-      campaign_entity_license_number: '1234456',
-      createdAt: '2025-10-01T05:26:02.496Z',
-      updatedAt: '2025-10-03T06:29:07.786Z',
-      publishedAt: null,
-      archive: null,
-      ads: [
-        {
-          id: 1,
-          ad_name: 'Dummy',
-          ad_id: 'dummy',
-          ad_start_date: '2025-10-11T19:45:00.000Z',
-          ad_end_date: '2025-10-29T19:30:00.000Z',
-          ad_headline: 'dummy headline',
-          ad_description: 'dummy description okayyyyyy',
-          ad_video_url: null,
-          ad_external_url: null,
-          ad_destination_models: 'business',
-          ad_destination_page: null,
-          createdAt: '2025-10-01T05:23:44.880Z',
-          updatedAt: '2025-10-01T05:23:44.880Z',
-          publishedAt: null,
-        },
-        {
-          id: 3,
-          ad_name: 'Dummy2',
-          ad_id: 'dummy2',
-          ad_start_date: '2025-10-11T19:45:00.000Z',
-          ad_end_date: '2025-10-29T19:30:00.000Z',
-          ad_headline: 'dummy headline',
-          ad_description: 'dummy description okayyyyyy',
-          ad_video_url: null,
-          ad_external_url: null,
-          ad_destination_models: 'business',
-          ad_destination_page: null,
-          createdAt: '2025-10-01T05:23:44.880Z',
-          updatedAt: '2025-10-01T05:23:44.880Z',
-          publishedAt: null,
-        },
-      ],
-      campaign_status: {
-        id: 2,
-        status_title: 'active',
-        status_id: 'status-1',
-        status_description: 'Scheduled or ready for publishing',
-        createdAt: '2025-09-30T13:00:49.088Z',
-        updatedAt: '2025-09-30T13:00:49.088Z',
-        publishedAt: null,
-        status_color: '#45AF2E',
-      },
-    },
-  ];
+
+  const [page, setPage] = useState(1);
+  const [pageSize, setPageSize] = useState(10);
+
+  const { ads, pagination } = useAds({ page, pageSize, status, type, search, campaign });
+
+  // TODO: Handle this afterwards
+  const { adStatus } = useAdStatus();
+  console.log('adStatus', adStatus);
+  const { adTypes } = useAdType();
+  const { campaigns } = useCampaigns({ paginated: false });
+  const campaignNames = campaigns.map((c) => c.campaign_name);
+
+  const currentPage = pagination?.page || 1;
+  const totalPages = pagination?.pageCount || 1;
+  const paginatedCampaigns = campaigns;
+
+  useEffect(() => {
+    if (currentPage > totalPages) setPage(1);
+  }, [totalPages]);
+
+  const filteredCampaignOptions = campaignNames.filter((c) =>
+    c.toLowerCase().includes(filter.toLowerCase())
+  );
 
   return (
     <div>
@@ -188,7 +97,7 @@ const AdList = () => {
             gap={4}
           >
             <Typography variant="beta" fontWeight="bold" textColor="neutral900">
-              2334 Ads
+              {pagination?.total} Ads
             </Typography>
             <Flex gap={3} wrap="wrap" alignItems="center">
               <Searchbar
@@ -201,25 +110,38 @@ const AdList = () => {
               >
                 <></>
               </Searchbar>
-              <SingleSelect value={type} onChange={(value) => setType(String(value))}>
-                <SingleSelectOption value="all">All Campaign</SingleSelectOption>
-                <SingleSelectOption value="banner">Banner</SingleSelectOption>
-                <SingleSelectOption value="video">Video</SingleSelectOption>
-              </SingleSelect>
+              <Combobox
+                placeholder="All Campaigns"
+                value={campaign}
+                onChange={(v) => setCampaign(v)}
+                filterValue={filter}
+                onFilterValueChange={(v) => setFilter(v ?? '')}
+              >
+                {filteredCampaignOptions.map((c) => (
+                  <ComboboxOption key={c} value={c}>
+                    {c}
+                  </ComboboxOption>
+                ))}
+              </Combobox>
               <MultiSelect value={status} onChange={(value) => setStatus(value)}>
                 <MultiSelectOption value="all">All Statuses</MultiSelectOption>
                 <MultiSelectOption value="active">Active</MultiSelectOption>
                 <MultiSelectOption value="paused">Paused</MultiSelectOption>
               </MultiSelect>
               <SingleSelect value={type} onChange={(value) => setType(String(value))}>
-                <SingleSelectOption value="all">All Types</SingleSelectOption>
-                <SingleSelectOption value="banner">Banner</SingleSelectOption>
-                <SingleSelectOption value="video">Video</SingleSelectOption>
+                <SingleSelectOption key={0} value={''}>
+                  All Types
+                </SingleSelectOption>
+                {adTypes.map((type) => (
+                  <SingleSelectOption key={type?.id} value={type?.id}>
+                    {type?.title}
+                  </SingleSelectOption>
+                ))}
               </SingleSelect>
             </Flex>
           </Flex>
         </div>
-        <Table colCount={7} rowCount={paginatedCampaigns.length}>
+        <Table colCount={7} rowCount={ads.length + 1}>
           <Thead>
             <Tr className={TrStyles}>
               <Th>
@@ -275,8 +197,8 @@ const AdList = () => {
             </Tr>
           </Thead>
           <Tbody>
-            {paginatedCampaigns.length > 0 &&
-              paginatedCampaigns.map((c, idx) => (
+            {ads.length > 0 &&
+              ads.map((ad, idx) => (
                 <Tr key={idx}>
                   {/* Campaign name and ID */}
                   <Td className={TdStyles}>
@@ -292,40 +214,55 @@ const AdList = () => {
                         style={{ width: 44, height: 44, borderRadius: 6 }}
                       />
                       <div className="flex flex-col gap-1">
-                        <p className="text-sm font-normal leading-5">Ad name</p>
+                        <p className="text-sm font-normal leading-5">{ad.attributes.ad_headline}</p>
                         <div className=" flex items-center gap-1">
-                          <BadgeCustom $variant="draft">Native card</BadgeCustom>
-                          <BadgeCustom $variant="grayOutline">Lifestyle listing</BadgeCustom>
+                          <BadgeCustom variant="draft">Native card</BadgeCustom>
+                          <BadgeCustom variant="grayOutline">Lifestyle listing</BadgeCustom>
                         </div>
                       </div>
                     </div>
                   </Td>
                   {/* Campaign date range (static for now) */}
-                  <Td className={TdStyles}>12/01/25 - 13/02/25</Td>
-                  {/* Campaign status */}
                   <Td className={TdStyles}>
+                    {ad?.attributes?.ad_start_date
+                      ? format(new Date(ad.attributes.ad_start_date), 'dd/MM/yyyy')
+                      : ''}{' '}
+                    -{' '}
+                    {ad?.attributes?.ad_end_date
+                      ? format(new Date(ad.attributes.ad_end_date), 'dd/MM/yyyy')
+                      : ''}
+                  </Td>
+
+                  {/* Campaign status */}
+                  {/* TODO: handle this later */}
+                  {/* <Td className={TdStyles}>
                     <Badge
                       backgroundColor={
-                        c?.campaign_status?.status_title === 'Live'
+                        ad?.campaign_status?.status_title === 'Live'
                           ? 'success100'
-                          : c?.campaign_status?.status_title === 'Draft'
+                          : ad?.campaign_status?.status_title === 'Draft'
                             ? 'neutral100'
                             : 'danger100'
                       }
                       textColor={
-                        c?.campaign_status?.status_title === 'Live'
+                        ad?.campaign_status?.status_title === 'Live'
                           ? 'success500'
-                          : c?.campaign_status?.status_title === 'Draft'
+                          : ad?.campaign_status?.status_title === 'Draft'
                             ? 'neutral600'
                             : 'danger500'
                       }
                     >
-                      {c?.campaign_status?.status_title}
+                      {ad?.campaign_status?.status_title}
+                    </Badge>
+                  </Td> */}
+                  <Td className={TdStyles}>
+                    <Badge backgroundColor={'success100'} textColor={'success500'}>
+                      Live
                     </Badge>
                   </Td>
                   <Td className={TdStyles}>
                     <Typography as="span" variant="epsilon">
-                      Advertisements
+                      {ad?.attributes?.campaign?.data?.attributes?.campaign_name || ''}
                     </Typography>
                   </Td>
                   <Td className={TdStyles}>
@@ -356,12 +293,12 @@ const AdList = () => {
                   <Td>
                     <Flex className="gap-2">
                       <CustomIconButton
-                        onClick={() => history.push('ad-report')}
+                        onClick={() => history.push(`ads/report/${ad.id}`)}
                         ariaLabel="View Analytics"
                       >
                         <Analytics />
                       </CustomIconButton>
-                      <AdActionMenu data={c} />
+                      <AdActionMenu data={ad} />
                     </Flex>
                   </Td>
                 </Tr>
@@ -369,6 +306,110 @@ const AdList = () => {
           </Tbody>
         </Table>
       </Box>
+      <Flex alignItems="center" justifyContent="space-between" marginTop={6}>
+        <Flex alignItems="center" gap={2}>
+          <SingleSelect
+            value={String(pageSize)}
+            onChange={(value) => {
+              setPageSize(Number(value));
+              setPage(1);
+            }}
+            size="S"
+          >
+            <SingleSelectOption value={10}>10</SingleSelectOption>
+            <SingleSelectOption value={20}>20</SingleSelectOption>
+            <SingleSelectOption value={50}>50</SingleSelectOption>
+            <SingleSelectOption value={100}>100</SingleSelectOption>
+          </SingleSelect>
+          <Typography variant="pi" textColor="neutral600" className="mr-2">
+            Entries per page:
+          </Typography>
+        </Flex>
+        {/* Pagination */}
+        {totalPages > 1 && (
+          <div className="w-min float-end mt-6">
+            <Pagination activePage={currentPage} pageCount={totalPages}>
+              <PreviousLink
+                as="button"
+                onClick={(e) => {
+                  e.preventDefault();
+                  if (currentPage > 1) setPage(currentPage - 1);
+                }}
+                disabled={currentPage === 1}
+                aria-label="Previous page"
+              >
+                Previous
+              </PreviousLink>
+              {/* Render page links dynamically, show up to 5 pages with Dots if needed */}
+              {(() => {
+                const links = [];
+                let start = Math.max(1, page - 2);
+                let end = Math.min(totalPages, page + 2);
+                if (start > 1) {
+                  links.push(
+                    <PageLink
+                      key={1}
+                      number={1}
+                      as="button"
+                      onClick={(e) => {
+                        e.preventDefault();
+                        setPage(1);
+                      }}
+                    >
+                      1
+                    </PageLink>
+                  );
+                  if (start > 2) links.push(<Dots key="dots-start">...</Dots>);
+                }
+                for (let i = start; i <= end; i++) {
+                  links.push(
+                    <PageLink
+                      key={i}
+                      number={i}
+                      as="button"
+                      onClick={(e) => {
+                        e.preventDefault();
+                        setPage(i);
+                      }}
+                      aria-current={i === currentPage ? 'page' : undefined}
+                    >
+                      {i}
+                    </PageLink>
+                  );
+                }
+                if (end < totalPages) {
+                  if (end < totalPages - 1) links.push(<Dots key="dots-end">...</Dots>);
+                  links.push(
+                    <PageLink
+                      key={totalPages}
+                      number={totalPages}
+                      as="button"
+                      onClick={(e) => {
+                        e.preventDefault();
+                        setPage(totalPages);
+                      }}
+                    >
+                      {totalPages}
+                    </PageLink>
+                  );
+                }
+                return links;
+              })()}
+              <NextLink
+                as="button"
+                onClick={(e) => {
+                  e.preventDefault();
+                  if (currentPage < totalPages) setPage(currentPage + 1);
+                }}
+                disabled={currentPage === totalPages}
+                aria-label="Next page"
+              >
+                Next
+              </NextLink>
+            </Pagination>
+          </div>
+        )}
+      </Flex>
     </div>
   );
 };

@@ -1,7 +1,7 @@
 // @ts-nocheck
 import styled from 'styled-components';
 
-export const Badge = styled.span`
+const Badge = styled.span`
   display: inline-block;
   width: fit-content;
   padding: 6px;
@@ -9,21 +9,23 @@ export const Badge = styled.span`
   font-weight: 500;
   border-radius: 6px;
   text-transform: uppercase;
-  background: ${({ $variant }) =>
-    $variant === 'active' || $variant === 'live'
+  background: ${({ variant }) =>
+    variant === 'active' || variant === 'live'
       ? '#eafbe7'
-      : $variant === 'inactive'
+      : variant === 'inactive'
         ? '#fdf4dc'
-        : $variant === 'draft'
+        : variant === 'draft'
           ? '#f6f6f9'
           : ''};
-  border: ${({ $variant }) => ($variant === 'grayOutline' ? '2px solid #eaeaea' : '')};
-  color: ${({ $variant }) =>
-    $variant === 'active' || $variant === 'live'
+  border: ${({ variant }) => (variant === 'grayOutline' ? '2px solid #eaeaea' : '')};
+  color: ${({ variant }) =>
+    variant === 'active' || variant === 'live'
       ? '#5cb176'
-      : $variant === 'inactive'
+      : variant === 'inactive'
         ? '#f29d41'
-        : $variant === 'draft' || $variant === 'grayOutline'
+        : variant === 'draft' || variant === 'grayOutline'
           ? '#8e8ea9'
           : ''};
 `;
+
+export default Badge;

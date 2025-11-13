@@ -1,66 +1,61 @@
 // @ts-nocheck
 import React from 'react';
-
-import {
-  Button,
-  Dots,
-  IconButton,
-  MenuItem,
-  NextLink,
-  PageLink,
-  Pagination,
-  PreviousLink,
-  Searchbar,
-  SimpleMenu,
-  SingleSelect,
-  SingleSelectOption,
-  MultiSelect,
-  MultiSelectOption,
-  Table,
-  Tbody,
-  Td,
-  Th,
-  Thead,
-  Tr,
-  Badge,
-  Box,
-  Flex,
-  Typography,
-  Grid,
-  GridItem,
-  TabGroup,
-  Tabs,
-  Tab,
-  TabPanels,
-  TabPanel,
-} from '@strapi/design-system';
+import { useFetchClient } from '@strapi/helper-plugin';
+import useSWRMutation from 'swr/mutation';
+import { mutate } from 'swr';
+import pluginId from '../../pluginId';
+import { IconButton, Flex, Typography } from '@strapi/design-system';
 import Pause from '../../components/Icons/Pause';
 import Archive from '../../components/Icons/Archive';
 import Edit from '../../components/Icons/Edit';
 import Duplicate from '../../components/Icons/Duplicate';
 import Eye from '../../components/Icons/Eye';
-import {
-  CarretDown,
-  ChevronDown,
-  CrossCircle,
-  More,
-  Play,
-  Plus,
-  Bell,
-  List,
-  Calendar,
-} from '@strapi/icons';
+import { More } from '@strapi/icons';
 import ConfirmUnpublishModal from '../Components/confirmUnpublishModal';
 import ConfirmArchiveModal from '../Components/confirmArchiveModal';
 import { useHistory } from 'react-router-dom';
-import PopoverItemButton from '../../components/elements/PopoverItemButton';
+import { toast } from 'sonner';
+import { CheckCircle } from '@strapi/icons';
 
 import { Popover, PopoverContent, PopoverTrigger } from '../../components/ui/popover';
+import PopoverItemButton from '../../components/elements/popoverItemButton';
 
 const ActionMenu = ({ data }) => {
   const history = useHistory();
   const [isOpenArchiveCampaignModal, setIsOpenArchiveCampaignModal] = React.useState(false);
   const [isOpenUnpublishCampaignModal, setIsOpenUnpublishCampaignModal] = React.useState(false);
+  const [openPopover, setOpenPopover] = React.useState(false);
+  const { get } = useFetchClient();
+
+  const { trigger: duplicateCampaign, isMutating } = useSWRMutation(
+    ['duplicateCampaign', data.id],
+    async () => {
+      return get(`/${pluginId}/get-campaigns/duplicate/${data.id}`);
+    }
+  );
+
+  const handleDuplicate = async () => {
+    try {
+      await duplicateCampaign();
+      mutate(['campaigns']);
+      toast.success('Campaign Successfully Duplicated!', {
+        icon: <CheckCircle color="success500" />,
+        position: 'top-center',
+        style: {
+          background: '#eafbe7',
+        },
+      });
+      setOpenPopover(false);
+    } catch (error) {
+      toast.error('Failed to Duplicate Campaign!', {
+        icon: <CheckCircle color="danger500" />,
+        position: 'top-center',
+        style: {
+          background: '#fbeaf7',
+        },
+      });
+    }
+  };
 
   return (
     <>
@@ -75,23 +70,23 @@ const ActionMenu = ({ data }) => {
         onSubmit={() => {}}
       />
 
-      <Popover>
+      <Popover open={openPopover} onOpenChange={setOpenPopover}>
         <PopoverTrigger>
-          <IconButton>
+          <IconButton onClick={() => setOpenPopover((v) => !v)}>
             <More />
           </IconButton>
         </PopoverTrigger>
         <PopoverContent>
           <Flex direction="column" style={{ padding: '8px 0px', width: '155px' }}>
-            <PopoverItemButton onClick={() => history.push('custom-ui/view-campaign')}>
+            <PopoverItemButton onClick={() => history.push(`campaigns/view/${data.id}`)}>
               <Typography>View Details</Typography>
               <Eye />
             </PopoverItemButton>
-            <PopoverItemButton onClick={() => history.push(`custom-ui/edit-campaign`)}>
+            <PopoverItemButton onClick={() => history.push(`campaigns/edit/${data.id}`)}>
               <Typography> Edit Campaign</Typography>
               <Edit />
             </PopoverItemButton>
-            <PopoverItemButton onClick={() => history.push('custom-ui/view-campaign')}>
+            <PopoverItemButton onClick={handleDuplicate} disabled={isMutating}>
               <Typography> Duplicate</Typography>
               <Duplicate />
             </PopoverItemButton>

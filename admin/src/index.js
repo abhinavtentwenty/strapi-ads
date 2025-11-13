@@ -4,8 +4,7 @@ import pluginPkg from '../../package.json';
 import pluginId from './pluginId';
 import Initializer from './components/Initializer';
 import React from 'react';
-import { Earth, Puzzle } from '@strapi/icons';
-import { CampaignIcon } from './components/Icons/Sidebar';
+import { CampaignIcon, AdManagementIcon, AnalyticsIcon } from './components/Icons/Sidebar';
 
 const name = pluginPkg.strapi.name;
 
@@ -32,7 +31,32 @@ const CustomPluginIcon = () => (
     </span>
   </span>
 );
-const AnalyticsIcon = () => (
+
+const CustomAdManagementIcon = () => (
+  <span style={{ position: 'relative', display: 'inline-block' }}>
+    <AdManagementIcon />
+    <span
+      style={{
+        position: 'absolute',
+        top: -10,
+        right: -13,
+        background: '#4945ff',
+        color: '#fff',
+        borderRadius: '50%',
+        fontSize: '10px',
+        padding: '2px 5px',
+        minWidth: '16px',
+        textAlign: 'center',
+        fontWeight: 'bold',
+        lineHeight: 1,
+      }}
+    >
+      {5}
+    </span>
+  </span>
+);
+
+const CustomAnalyticsIcon = () => (
   <span style={{ position: 'relative', display: 'inline-block' }}>
     <AnalyticsIcon />
     <span
@@ -51,7 +75,7 @@ const AnalyticsIcon = () => (
         lineHeight: 1,
       }}
     >
-      {/* {json?.data?.length} */}
+      3
     </span>
   </span>
 );
@@ -64,44 +88,38 @@ export default {
     // Inline custom icon with badge
 
     app.addMenuLink({
-      to: `/plugins/${pluginId}`,
+      to: `/plugins/${pluginId}/campaigns`,
       icon: CustomPluginIcon,
+      intlLabel: { id: `${pluginId}.plugin.campaigns`, defaultMessage: 'Campaigns' },
+      Component: async () => {
+        const component = await import('./pages/App/index.js');
+        return component;
+      },
+    });
+
+    app.addMenuLink({
+      to: `/plugins/${pluginId}/ads`,
+      icon: CustomAdManagementIcon, // <-- Use a unique icon
+      intlLabel: { id: `${pluginId}.plugin.adManagement`, defaultMessage: 'Ad Management' },
+      Component: async () => {
+        const component = await import('./pages/App/index.js');
+        return component;
+      },
+    });
+
+    app.addMenuLink({
+      to: `/plugins/${pluginId}/campaign-analytics`,
+      icon: CustomAnalyticsIcon, // <-- Use a unique icon
       intlLabel: {
-        id: `${pluginId}.plugin.name`,
-        // defaultMessage: name,
-        defaultMessage: 'Campaigns',
+        id: `${pluginId}.plugin.analyticsReports`,
+        defaultMessage: 'Analytics & Reports',
       },
       Component: async () => {
         const component = await import('./pages/App/index.js');
         return component;
       },
-      permissions: [
-        // Uncomment to set the permissions of the plugin here
-        // {
-        //   action: '', // the action name should be plugin::plugin-name.actionType
-        //   subject: null,
-        // },
-      ],
     });
-    // app.addMenuLink({
-    //   to: `/plugins/${pluginId}/campaign-analytics`,
-    //   icon: CustomPluginIcon,
-    //   intlLabel: {
-    //     id: `${pluginId}.plugin.name`,
-    //     defaultMessage: 'Doslyy',
-    //   },
-    //   Component: async () => {
-    //     const component = await import('./pages/Analytics/campaign-analytics.js');
-    //     return component;
-    //   },
-    //   permissions: [
-    //     // Uncomment to set the permissions of the plugin here
-    //     // {
-    //     //   action: '', // the action name should be plugin::plugin-name.actionType
-    //     //   subject: null,
-    //     // },
-    //   ],
-    // });
+
     app.registerPlugin({
       id: pluginId,
       initializer: Initializer,

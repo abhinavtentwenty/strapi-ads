@@ -21,7 +21,7 @@
     "ad_spot": {
       "type": "relation",
       "relation": "manyToOne",
-      "target": "plugin::custom-ui.ad-spot",
+      "target": "plugin::strapi-ads.ad-spot",
       "inversedBy": "ad_screens"
     }
   }

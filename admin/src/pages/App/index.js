@@ -33,17 +33,17 @@ const App = () => {
       <Toaster />
       <Box padding="30px">
         <Switch>
-          <Route path={`/plugins/${pluginId}`} component={HomePage} exact />
-          <Route path={`/plugins/${pluginId}/create-campaign`} component={CreateCampaign} />
-          <Route path={`/plugins/${pluginId}/edit-campaign`} component={EditCampaign} />
-          <Route path={`/plugins/${pluginId}/view-campaign`} component={ViewCampaign} />
-          <Route path={`/plugins/${pluginId}/campaign-report`} component={CampaignReport} />
+          <Route path={`/plugins/${pluginId}/campaigns`} component={HomePage} exact />
+          <Route path={`/plugins/${pluginId}/campaigns/create`} component={CreateCampaign} />
+          <Route path={`/plugins/${pluginId}/campaigns/edit/:id`} component={EditCampaign} />
+          <Route path={`/plugins/${pluginId}/campaigns/view/:id`} component={ViewCampaign} />
+          <Route path={`/plugins/${pluginId}/campaigns/report/:id`} component={CampaignReport} />
           <Route
             path={`/plugins/${pluginId}/campaign-analytics`}
             component={CampaignAnalyticsReport}
           />
-          <Route path={`/plugins/${pluginId}/ad-report`} component={AdReport} />
-          <Route path={`/plugins/${pluginId}/ad-list`} component={AdList} />
+          <Route path={`/plugins/${pluginId}/ads/report/:id`} component={AdReport} />
+          <Route path={`/plugins/${pluginId}/ads`} component={AdList} />
           <Route component={AnErrorOccurred} />
         </Switch>
       </Box>

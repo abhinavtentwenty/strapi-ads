@@ -7,7 +7,7 @@ module.exports = ({ strapi }) => ({
 
     const { filters = {}, pagination = {}, populate = {}, } = ctx.query;
 
-    const campaigns = await strapi.service('plugin::custom-ui.campaign').find({
+    const campaigns = await strapi.service('plugin::strapi-ads.campaign').find({
       filters: { ...filters, published: true },
       populate,
       pagination,
@@ -49,14 +49,14 @@ module.exports = ({ strapi }) => ({
   },
   async findOne(ctx) {
     const { id } = ctx.params;
-    const campaign = await strapi.entityService.findOne('plugin::custom-ui.campaign', id, {
+    const campaign = await strapi.entityService.findOne('plugin::strapi-ads.campaign', id, {
       populate: ['ads', 'campaign_status', 'ads.ad_status', 'ads.ad_image'],
     });
     ctx.body = campaign;
   },
   async duplicate(ctx) {
     try {
-      const duplicatedCampaign = await strapi.plugin('custom-ui').service('campaign').duplicate(ctx);
+      const duplicatedCampaign = await strapi.plugin('strapi-ads').service('campaign').duplicate(ctx);
       ctx.body = duplicatedCampaign;
     } catch (error) {
       ctx.throw(500, 'Error duplicating campaign');

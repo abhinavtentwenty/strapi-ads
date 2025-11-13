@@ -25,13 +25,13 @@
     "ad_screens": {
       "type": "relation",
       "relation": "oneToMany",
-      "target": "plugin::custom-ui.ad-screen",
+      "target": "plugin::strapi-ads.ad-screen",
       "mappedBy": "ad_spot"
     },
     "ad_types": {
       "type": "relation",
       "relation": "manyToMany",
-      "target": "plugin::custom-ui.ad-type",
+      "target": "plugin::strapi-ads.ad-type",
       "inversedBy": "ad_spots"
     }
   }

@@ -7,10 +7,10 @@
 const { createCoreService } = require('@strapi/strapi').factories;
 const _ = require('lodash');
 const { deepOmit } = require('../utils/common');
-module.exports = createCoreService('plugin::custom-ui.campaign', ({ strapi }) => ({
+module.exports = createCoreService('plugin::strapi-ads.campaign', ({ strapi }) => ({
   async duplicate(ctx) {
     const { id } = ctx.params;
-    const originalCampaign = await strapi.entityService.findOne('plugin::custom-ui.campaign', id, {
+    const originalCampaign = await strapi.entityService.findOne('plugin::strapi-ads.campaign', id, {
       populate: ['ads', 'campaign_status', 'ads.ad_status', 'ads.ad_image'],
     });
     if (!originalCampaign) {
@@ -23,13 +23,13 @@ module.exports = createCoreService('plugin::custom-ui.campaign', ({ strapi }) =>
     campaignData.campaign_id = await strapi
       .service('plugin::content-manager.uid')
       .generateUIDField({
-        contentTypeUID: 'plugin::custom-ui.campaign',
+        contentTypeUID: 'plugin::strapi-ads.campaign',
         field: 'campaign_id',
         data: {
           campaign_name: campaignData.campaign_name,
         },
       });
-    const duplicatedCampaign = await strapi.entityService.create('plugin::custom-ui.campaign', {
+    const duplicatedCampaign = await strapi.entityService.create('plugin::strapi-ads.campaign', {
       data: {
         ...campaignData,
         campaign_name: campaignData.campaign_name,
@@ -47,13 +47,13 @@ module.exports = createCoreService('plugin::custom-ui.campaign', ({ strapi }) =>
         let { ad_image, ...adData } = ad;
         adData.ad_name = `${adData.ad_name} (Copy)-${new Date().getTime()}`;
         adData.ad_id = await strapi.service('plugin::content-manager.uid').generateUIDField({
-          contentTypeUID: 'plugin::custom-ui.ad',
+          contentTypeUID: 'plugin::strapi-ads.ad',
           field: 'ad_id',
           data: {
             ad_name: adData.ad_name,
           },
         });
-        await strapi.entityService.create('plugin::custom-ui.ad', {
+        await strapi.entityService.create('plugin::strapi-ads.ad', {
           data: {
             ...adData,
             campaign: duplicatedCampaign.id,
@@ -64,11 +64,68 @@ module.exports = createCoreService('plugin::custom-ui.campaign', ({ strapi }) =>
       }
     }
     return await strapi.entityService.findOne(
-      'plugin::custom-ui.campaign',
+      'plugin::strapi-ads.campaign',
       duplicatedCampaign?.id,
       {
         populate: ['ads', 'campaign_status', 'ads.ad_status', 'ads.ad_image'],
       }
     );
+  },
+
+  async addNewCampaign(ctx) {
+    const { campaignData, ads } = ctx.request.body;
+
+    // Remove unwanted fields if present
+    const cleanCampaignData = deepOmit(campaignData, [
+      'id',
+      'createdAt',
+      'updatedAt',
+      'publishedAt',
+    ]);
+
+    // Generate unique campaign_id
+    cleanCampaignData.campaign_id = await strapi
+      .service('plugin::content-manager.uid')
+      .generateUIDField({
+        contentTypeUID: 'plugin::strapi-ads.campaign',
+        field: 'campaign_id',
+        data: {
+          campaign_name: cleanCampaignData.campaign_name,
+        },
+      });
+
+    // Create campaign
+    const newCampaign = await strapi.entityService.create('plugin::strapi-ads.campaign', {
+      data: {
+        ...cleanCampaignData,
+        published: false,
+      },
+    });
+
+    // Create ads if provided
+    if (ads?.length) {
+      for (const ad of ads) {
+        let { ad_image, ...adData } = ad;
+        adData.ad_id = await strapi.service('plugin::content-manager.uid').generateUIDField({
+          contentTypeUID: 'plugin::strapi-ads.ad',
+          field: 'ad_id',
+          data: {
+            ad_name: adData.ad_name,
+          },
+        });
+        await strapi.entityService.create('plugin::strapi-ads.ad', {
+          data: {
+            ...adData,
+            campaign: newCampaign.id,
+            ad_image: ad_image ? ad_image.id : null,
+            published: false,
+          },
+        });
+      }
+    }
+
+    return await strapi.entityService.findOne('plugin::strapi-ads.campaign', newCampaign?.id, {
+      populate: ['ads', 'campaign_status', 'ads.ad_status', 'ads.ad_image'],
+    });
   },
 }));

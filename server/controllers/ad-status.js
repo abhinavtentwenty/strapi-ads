@@ -6,4 +6,4 @@
 
 const { createCoreController } = require('@strapi/strapi').factories;
 
-module.exports = createCoreController('plugin::custom-ui.ad-status');
+module.exports = createCoreController('plugin::strapi-ads.ad-status');

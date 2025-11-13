@@ -1,8 +1,11 @@
 import React from 'react';
+import { useParams } from 'react-router-dom';
 import CampaignForm from '../components/campaignForm';
 
 const EditCampaign = () => {
-  return <CampaignForm mode="edit" />;
+  const { id } = useParams();
+
+  return <CampaignForm mode="edit" campaignId={id} />;
 };
 
 export default EditCampaign;

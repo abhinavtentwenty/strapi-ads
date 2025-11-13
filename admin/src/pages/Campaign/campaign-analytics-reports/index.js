@@ -13,22 +13,18 @@ import {
   MultiSelect,
   MultiSelectOption,
 } from '@strapi/design-system';
-import { ArrowLeft } from '@strapi/icons';
 import {
   Breadcrumb,
   BreadcrumbItem,
   BreadcrumbLink,
   BreadcrumbList,
-  BreadcrumbPage,
   BreadcrumbSeparator,
 } from '../../../components/ui/breadcrumb';
 
-import { Badge } from '../../../components/elements/badge';
+import BackButton from '../../../components/elements/backButton';
 import DashboardCard from '../../../components/elements/dashboardcard';
 import PerformanceAnalytics from '../../Components/performanceAnalytics';
 import ClickThroughRateTrend from '../../Components/clickThroughRateTrend';
-import { format } from 'date-fns';
-import date from '../../../../../../../../helpers/date';
 import ExportReportCsvModal from '../components/exportReportCsvModal';
 
 const DummyData = [
@@ -83,19 +79,7 @@ const CampaignAnalyticsReport = () => {
         setIsOpen={setIsOpenExportReportCsvModal}
         onSubmit={() => {}}
       />
-      <Flex
-        as="button"
-        style={{ cursor: 'pointer', marginBottom: '1rem' }}
-        gap={2}
-        onClick={(e) => {
-          history.goBack();
-        }}
-      >
-        <ArrowLeft stroke="primary600" fill="primary600" />
-        <Typography variant="epsilon" textColor="primary600">
-          Back
-        </Typography>
-      </Flex>
+      {/* <BackButton /> */}
       <Flex justifyContent="space-between" alignItems="flex-end" style={{ marginBottom: '2rem' }}>
         <Flex direction="column" alignItems="flex-start">
           <Typography variant="alpha">Analytics & Reports</Typography>

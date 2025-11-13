@@ -1,58 +1,48 @@
 // @ts-nocheck
-import { faker } from '@faker-js/faker';
 import { Typography } from '@strapi/design-system';
 import {
   GanttCreateMarkerTrigger,
   GanttFeatureItem,
   GanttFeatureList,
-  GanttFeatureListGroup,
   GanttHeader,
-  GanttMarker,
   GanttProvider,
   GanttSidebar,
-  GanttSidebarGroup,
   GanttSidebarItem,
   GanttTimeline,
   GanttToday,
 } from '../../components/ui/shadcn-io/gantt';
-import { Badge } from '../../components/elements/badge';
+import CustomBadge from '../../components/elements/badge';
 
-import groupBy from 'lodash.groupby';
 import { useState, useEffect } from 'react';
-import { Avatar, AvatarFallback, AvatarImage } from '../../components/ui/avatar';
-import {
-  ContextMenu,
-  ContextMenuContent,
-  ContextMenuItem,
-  ContextMenuTrigger,
-} from '../../components/ui/context-menu';
+import { ContextMenu, ContextMenuTrigger } from '../../components/ui/context-menu';
 const capitalize = (str) => str.charAt(0).toUpperCase() + str.slice(1);
 
-const Example = ({ paginatedCampaigns = [] }) => {
-  const [features, setFeatures] = useState(() =>
-    paginatedCampaigns.map((c) => {
-      return {
-        id: c.id,
-        name: capitalize(c.campaign_name),
-        startAt: new Date(c.ads[0]?.ad_start_date),
-        endAt: new Date(c.ads[0]?.ad_end_date),
-        status: c?.campaign_status?.status_title,
-        description: c.campaign_id,
-        ads: c.ads.map((ad) => {
-          return {
+const TimelineView = ({ paginatedCampaigns = [] }) => {
+  const [features, setFeatures] = useState(
+    () =>
+      paginatedCampaigns?.map((c) => {
+        const adsArray = Array.isArray(c.ads) ? c.ads : [];
+        return {
+          id: c.id,
+          name: capitalize(c.campaign_name),
+          startAt: adsArray[0]?.ad_start_date ? new Date(adsArray[0].ad_start_date) : null,
+          endAt: adsArray[0]?.ad_end_date ? new Date(adsArray[0].ad_end_date) : null,
+          status: c?.campaign_status?.status_title,
+          description: c.campaign_id,
+          ads: adsArray.map((ad) => ({
             id: ad.id,
             name: capitalize(ad.ad_headline),
-            startAt: new Date(ad.ad_start_date),
-            endAt: new Date(ad.ad_end_date),
-            img: ad.ad_image[0]?.url,
+            startAt: ad.ad_start_date ? new Date(ad.ad_start_date) : null,
+            endAt: ad.ad_end_date ? new Date(ad.ad_end_date) : null,
+            img: ad.ad_image?.[0]?.url,
             status: ad?.ad_status?.status_title,
             description: ad.ad_description,
-          };
-        }),
-      };
-    })
+          })),
+        };
+      }) || []
   );
 
+  // TODO: Fix this temporary style injection hack
   useEffect(() => {
     const style = document.createElement('style');
     style.textContent = `
@@ -82,7 +72,6 @@ const Example = ({ paginatedCampaigns = [] }) => {
     setFeatures((prev) =>
       prev.map((feature) => (feature.id === id ? { ...feature, startAt, endAt } : feature))
     );
-    console.log(`Move feature: ${id} from ${startAt} to ${endAt}`);
   };
   const handleAddFeature = (date) => console.log(`Add feature: ${date.toISOString()}`);
   return (
@@ -104,7 +93,6 @@ const Example = ({ paginatedCampaigns = [] }) => {
       </GanttSidebar>
       <GanttTimeline>
         <GanttHeader />
-
         <GanttFeatureList>
           {flatFeatures.map((feature) => (
             <div className="flex" key={feature.id}>
@@ -126,9 +114,9 @@ const Example = ({ paginatedCampaigns = [] }) => {
                         <div className="flex flex-col gap-1">
                           <p className="text-sm font-normal leading-5">{feature.name}</p>
                           <div className=" flex items-center gap-1">
-                            <Badge $variant={feature.status}>{feature.status}</Badge>
-                            <Badge $variant="draft">Native card</Badge>
-                            <Badge $variant="grayOutline">Lifestyle listing</Badge>
+                            <CustomBadge variant={feature.status}>{feature.status}</CustomBadge>
+                            <CustomBadge variant="draft">Native card</CustomBadge>
+                            <CustomBadge variant="grayOutline">Lifestyle listing</CustomBadge>
                           </div>
                           <Typography type="pi" textColor="neutral600">
                             {feature.startAt.toDateString()} - {feature.endAt.toDateString()}
@@ -148,4 +136,4 @@ const Example = ({ paginatedCampaigns = [] }) => {
     </GanttProvider>
   );
 };
-export default Example;
+export default TimelineView;

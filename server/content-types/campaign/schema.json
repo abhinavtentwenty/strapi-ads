@@ -32,12 +32,12 @@
     "campaign_status": {
       "type": "relation",
       "relation": "oneToOne",
-      "target": "plugin::custom-ui.ad-status"
+      "target": "plugin::strapi-ads.ad-status"
     },
     "ads": {
       "type": "relation",
       "relation": "oneToMany",
-      "target": "plugin::custom-ui.ad",
+      "target": "plugin::strapi-ads.ad",
       "mappedBy": "campaign"
     },
     "archive": {

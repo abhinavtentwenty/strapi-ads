@@ -21,19 +21,19 @@
     "ad_status": {
       "type": "relation",
       "relation": "oneToOne",
-      "target": "plugin::custom-ui.ad-status"
+      "target": "plugin::strapi-ads.ad-status"
     },
     "ad_start_date": {
       "required": true,
-      "type": "datetime"
+      "type": "date"
     },
     "ad_end_date": {
-      "type": "datetime"
+      "type": "date"
     },
     "ad_type": {
       "type": "relation",
       "relation": "oneToOne",
-      "target": "plugin::custom-ui.ad-type"
+      "target": "plugin::strapi-ads.ad-type"
     },
     "ad_headline": {
       "type": "string"
@@ -43,10 +43,7 @@
     },
     "ad_image": {
       "allowedTypes": [
-        "images",
-        "files",
-        "videos",
-        "audios"
+        "images"
       ],
       "type": "media",
       "multiple": true
@@ -60,19 +57,31 @@
     "ad_destination_models": {
       "type": "enumeration",
       "enum": [
-        "business",
-        "lifestyle",
+        "general",
         "news"
       ]
     },
     "ad_destination_page": {
       "type": "string"
     },
+    "ad_cta_name": {
+      "type": "string"
+    },
     "campaign": {
       "type": "relation",
       "relation": "manyToOne",
-      "target": "plugin::custom-ui.campaign",
+      "target": "plugin::strapi-ads.campaign",
       "inversedBy": "ads"
+    },
+    "ad_spot": {
+      "type": "relation",
+      "relation": "oneToOne",
+      "target": "plugin::strapi-ads.ad-spot"
+    },
+    "ad_screens": {
+      "type": "relation",
+      "relation": "oneToMany",
+      "target": "plugin::strapi-ads.ad-screen"
     }
   }
 }

@@ -14,31 +14,22 @@ import {
   MultiSelectOption,
   Popover,
 } from '@strapi/design-system';
-import { ArrowLeft, More } from '@strapi/icons';
-import {
-  Breadcrumb,
-  BreadcrumbItem,
-  BreadcrumbLink,
-  BreadcrumbList,
-  BreadcrumbPage,
-  BreadcrumbSeparator,
-} from '../../../components/ui/breadcrumb';
+import { More } from '@strapi/icons';
 
-import { Badge } from '../../../components/elements/badge';
+import CustomBadge from '../../../components/elements/badge';
 import DashboardCard from '../../../components/elements/dashboardcard';
 import PerformanceAnalytics from '../../Components/performanceAnalytics';
 import ClickThroughRateTrend from '../../Components/clickThroughRateTrend';
-import { format } from 'date-fns';
-import date from '../../../../../../../../helpers/date';
 import Analytics from '../../../components/Icons/Analytics';
 import Download from '../../../components/Icons/Download';
 import Pause from '../../../components/Icons/Pause';
-import Save from '../../../components/icons/Save';
+import Save from '../../../components/Icons/Save';
 import Archive from '../../../components/Icons/Archive';
 import ConfirmArchiveModal from '../../Components/confirmArchiveModal';
 import ConfirmUnpublishModal from '../../Components/confirmUnpublishModal';
 
 import CustomButton from '../../../components/elements/customButton';
+import BackButton from '../../../components/elements/backButton';
 
 const DummyData = [
   {
@@ -63,6 +54,7 @@ const DummyData = [
     differenceValue: 50,
   },
 ];
+
 const PopoverItem = styled(Flex)`
   padding: 8px 16px;
   gap: 6px;
@@ -84,7 +76,6 @@ const AdReport = () => {
   const morePopoverRef = React.useRef(null);
   const [isOpenArchiveAdModal, setIsOpenArchiveAdModal] = React.useState(false);
   const [isOpenUnpublishAdModal, setIsOpenUnpublishAdModal] = React.useState(false);
-
   const history = useHistory();
 
   return (
@@ -101,19 +92,7 @@ const AdReport = () => {
         onSubmit={() => {}}
         variant="ads"
       />
-      <Flex
-        as="button"
-        style={{ cursor: 'pointer', marginBottom: '1rem' }}
-        gap={2}
-        onClick={(e) => {
-          history.goBack();
-        }}
-      >
-        <ArrowLeft stroke="primary600" fill="primary600" />
-        <Typography variant="epsilon" textColor="primary600">
-          Back
-        </Typography>
-      </Flex>
+      <BackButton />
       <Flex justifyContent="space-between" alignItems="center" style={{ marginBottom: '2rem' }}>
         <div
           className="flex items-center gap-2"
@@ -130,9 +109,9 @@ const AdReport = () => {
             <Flex alignItems="center" gap={1}>
               <Typography variant="beta">Best Performing Ad</Typography>
               <div className=" flex items-center gap-1">
-                <Badge $variant="draft">Native card</Badge>
-                <Badge $variant="grayOutline">Lifestyle listing</Badge>
-                <Badge $variant="live">Live</Badge>
+                <CustomBadge variant="draft">Native card</CustomBadge>
+                <CustomBadge variant="grayOutline">Lifestyle listing</CustomBadge>
+                <CustomBadge variant="live">Live</CustomBadge>
               </div>
             </Flex>
             <Typography variant="pi" textColor="neutral600">

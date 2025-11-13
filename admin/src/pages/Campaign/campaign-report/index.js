@@ -13,22 +13,20 @@ import {
   MultiSelect,
   MultiSelectOption,
 } from '@strapi/design-system';
-import { ArrowLeft } from '@strapi/icons';
 import {
   Breadcrumb,
   BreadcrumbItem,
   BreadcrumbLink,
   BreadcrumbList,
-  BreadcrumbPage,
   BreadcrumbSeparator,
 } from '../../../components/ui/breadcrumb';
 
-import { Badge } from '../../../components/elements/badge';
+import CustomBadge from '../../../components/elements/badge';
 import DashboardCard from '../../../components/elements/dashboardcard';
 import PerformanceAnalytics from '../../Components/performanceAnalytics';
 import ClickThroughRateTrend from '../../Components/clickThroughRateTrend';
 import { format } from 'date-fns';
-import date from '../../../../../../../../helpers/date';
+import BackButton from '../../../components/elements/backButton';
 
 const DummyData = [
   {
@@ -69,19 +67,7 @@ const CampaignReport = () => {
 
   return (
     <div>
-      <Flex
-        as="button"
-        style={{ cursor: 'pointer', marginBottom: '1rem' }}
-        gap={2}
-        onClick={(e) => {
-          history.goBack();
-        }}
-      >
-        <ArrowLeft stroke="primary600" fill="primary600" />
-        <Typography variant="epsilon" textColor="primary600">
-          Back
-        </Typography>
-      </Flex>
+      <BackButton />
       <Flex justifyContent="space-between" alignItems="flex-end" style={{ marginBottom: '2rem' }}>
         <Flex direction="column" alignItems="flex-start">
           <Flex gap={2}>
@@ -89,8 +75,8 @@ const CampaignReport = () => {
               {format(new Date('2025-12-01'), 'MM/dd/yy')} -{' '}
               {format(new Date('2024-12-31'), 'MM/dd/yy')}
             </p>
-            {/* <Badge $variant={feature.status}>{feature.status}</Badge> */}
-            <Badge $variant="live">Live</Badge>
+            {/* <CustomBadge variant={feature.status}>{feature.status}</CustomBadge> */}
+            <CustomBadge variant="live">Live</CustomBadge>
           </Flex>
           <Typography variant="alpha">Tourism Q1</Typography>
           <Breadcrumb>

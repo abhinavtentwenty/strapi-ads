@@ -1,4 +1,6 @@
 // @ts-nocheck
+import { useHistory } from 'react-router-dom';
+
 import { DndContext, MouseSensor, useDraggable, useSensor } from '@dnd-kit/core';
 import { restrictToHorizontalAxis } from '@dnd-kit/modifiers';
 import { useMouse, useThrottle, useWindowScroll } from '@uidotdev/usehooks';
@@ -40,7 +42,7 @@ import {
   ContextMenuItem,
   ContextMenuTrigger,
 } from '../context-menu';
-import { Badge } from '../../elements/badge';
+import CustomBadge from '../../elements/badge';
 import { cn, truncate } from '../../../utils/utils';
 
 import { Flex } from '@strapi/design-system';
@@ -318,6 +320,8 @@ export const GanttHeader = ({ className }) => {
 };
 
 export const GanttSidebarItem = ({ feature, onSelectItem, className, adLength }) => {
+  const history = useHistory();
+
   const gantt = useContext(GanttContext);
   const tempEndAt =
     feature.endAt && isSameDay(feature.startAt, feature.endAt)
@@ -356,7 +360,7 @@ export const GanttSidebarItem = ({ feature, onSelectItem, className, adLength })
       }}
       tabIndex={0}
     >
-      <Badge $variant={feature.status}>{feature.status}</Badge>
+      <CustomBadge variant={feature.status}>{feature.status}</CustomBadge>
       <Flex className="gap-2" style={{ justifyContent: 'space-between', alignItems: 'center' }}>
         <div>
           <p
@@ -387,7 +391,7 @@ export const GanttSidebarItem = ({ feature, onSelectItem, className, adLength })
         </div>
         <Flex className="gap-2">
           <CustomIconButton
-            onClick={() => console.log('view analytics')}
+            onClick={() => history.push(`campaigns/report/${feature.id}`)}
             ariaLabel="View Analytics"
           >
             <Analytics />

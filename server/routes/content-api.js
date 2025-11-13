@@ -8,6 +8,10 @@ module.exports = {
       config: {
         policies: [],
       },
+    },{
+      method: 'GET',
+      path: '/ads/list',
+      handler: 'ad.list',
     },
     {
       method: 'POST',

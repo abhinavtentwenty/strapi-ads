@@ -11,6 +11,14 @@ module.exports = {
     },
     {
       method: 'GET',
+      path: '/ad/admin-find',
+      handler: 'ad.find',
+      config: {
+        policies: [],
+      },
+    },
+    {
+      method: 'GET',
       path: '/get-ad-types',
       handler: 'ad-type-custom.find',
       config: {
@@ -61,6 +69,38 @@ module.exports = {
       method: 'GET',
       path: '/ad/get/:id',
       handler: 'ad.findOne',
+      config: {
+        policies: [],
+      },
+    },
+    {
+      method: 'POST',
+      path: '/ad',
+      handler: 'ad.create',
+      config: {
+        policies: [],
+      },
+    },
+    {
+      method: 'PUT',
+      path: '/ad/:id',
+      handler: 'ad.update',
+      config: {
+        policies: [],
+      },
+    },
+    {
+      method: 'POST',
+      path: '/campaign',
+      handler: 'campaign.create',
+      config: {
+        policies: [],
+      },
+    },
+    {
+      method: 'PUT',
+      path: '/campaign/:id',
+      handler: 'campaign.update',
       config: {
         policies: [],
       },

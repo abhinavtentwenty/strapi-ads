@@ -1,5 +1,4 @@
 import * as React from 'react';
-
 import CustomModal from '../../components/elements/customModal';
 
 export default function ConfirmArchiveModal({

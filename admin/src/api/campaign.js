@@ -1,9 +1,9 @@
 import { request } from '@strapi/helper-plugin';
 
-const customUIRequests = {
+const strapiAdsRequests = {
   getArticles: async () => {
-    return await request('/custom-ui/articles', { method: 'GET' });
+    return await request('/strapi-ads/articles', { method: 'GET' });
   },
 };
 
-export default customUIRequests;
+export default strapiAdsRequests;

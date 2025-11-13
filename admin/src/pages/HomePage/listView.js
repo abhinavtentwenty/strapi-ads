@@ -3,19 +3,6 @@ import React from 'react';
 import { useHistory } from 'react-router-dom';
 import {
   Button,
-  Dots,
-  IconButton,
-  MenuItem,
-  NextLink,
-  PageLink,
-  Pagination,
-  PreviousLink,
-  Searchbar,
-  SimpleMenu,
-  SingleSelect,
-  SingleSelectOption,
-  MultiSelect,
-  MultiSelectOption,
   Table,
   Tbody,
   Td,
@@ -23,32 +10,12 @@ import {
   Thead,
   Tr,
   Badge,
-  Box,
   Flex,
   Typography,
   Grid,
-  GridItem,
-  TabGroup,
-  Tabs,
-  Tab,
-  TabPanels,
-  TabPanel,
 } from '@strapi/design-system';
 
-import {
-  CarretDown,
-  ChevronDown,
-  CrossCircle,
-  Duplicate,
-  Eye,
-  More,
-  Pencil,
-  Play,
-  Plus,
-  Bell,
-  List,
-  Calendar,
-} from '@strapi/icons';
+import { CarretDown, Plus } from '@strapi/icons';
 // import { EmptyDocuments } from "@strapi/icons/symbols";
 
 import Analytics from '../../components/Icons/Analytics';
@@ -57,6 +24,7 @@ import ActionMenu from './actionMenu';
 import CustomIconButton from '../../components/elements/customIconButton';
 const TrStyles = 'text-xl text-[#62627B] uppercase font-bold';
 const TdStyles = 'text-2xl';
+import CustomBadge from '../../components/elements/badge';
 
 const DummyData = [
   {
@@ -107,7 +75,7 @@ const ListView = ({ paginatedCampaigns }) => {
           ))}
         </Grid>
       </div>
-      <Table colCount={7} rowCount={paginatedCampaigns.length}>
+      <Table colCount={7} rowCount={paginatedCampaigns?.length}>
         <Thead>
           <Tr className={TrStyles}>
             <Th>
@@ -164,8 +132,8 @@ const ListView = ({ paginatedCampaigns }) => {
           </Tr>
         </Thead>
         <Tbody>
-          {paginatedCampaigns.length > 0 ? (
-            paginatedCampaigns.map((c, idx) => (
+          {paginatedCampaigns?.length > 0 ? (
+            paginatedCampaigns?.map((c, idx) => (
               <Tr key={idx}>
                 {/* Campaign name and ID */}
                 <Td className={TdStyles}>
@@ -182,29 +150,14 @@ const ListView = ({ paginatedCampaigns }) => {
                 <Td className={TdStyles}>12/01/25 - 13/02/25</Td>
                 {/* Campaign status */}
                 <Td className={TdStyles}>
-                  <Badge
-                    backgroundColor={
-                      c?.campaign_status?.status_title === 'Live'
-                        ? 'success100'
-                        : c?.campaign_status?.status_title === 'Draft'
-                          ? 'neutral100'
-                          : 'danger100'
-                    }
-                    textColor={
-                      c?.campaign_status?.status_title === 'Live'
-                        ? 'success500'
-                        : c?.campaign_status?.status_title === 'Draft'
-                          ? 'neutral600'
-                          : 'danger500'
-                    }
-                  >
+                  <CustomBadge variant={c?.campaign_status?.status_title}>
                     {c?.campaign_status?.status_title}
-                  </Badge>
+                  </CustomBadge>
                 </Td>
                 <Td className={TdStyles}>
                   <div className="flex flex-col">
                     <Typography as="span" variant="epsilon">
-                      {c.ads.length < 10 ? `0${c.ads.length}` : c.ads.length}
+                      {c?.ads?.length < 10 ? `0${c?.ads?.length}` : c?.ads?.length}
                     </Typography>
                     <Typography as="span" variant="pi">
                       Advertisments
@@ -236,7 +189,7 @@ const ListView = ({ paginatedCampaigns }) => {
                 <Td>
                   <Flex className="gap-2">
                     <CustomIconButton
-                      onClick={() => history.push('custom-ui/campaign-report')}
+                      onClick={() => history.push(`campaigns/report/${c.id}`)}
                       ariaLabel="View Analytics"
                     >
                       <Analytics />
@@ -258,7 +211,7 @@ const ListView = ({ paginatedCampaigns }) => {
                   <Button
                     variant="secondary"
                     startIcon={<Plus />}
-                    onClick={() => history.push('/create-campaign')}
+                    onClick={() => history.push('campaign/create')}
                   >
                     Create New Campaign
                   </Button>

@@ -1,4 +1,4 @@
-//@ts-nocheck
+// @ts-nocheck
 import React from 'react';
 import { useHistory } from 'react-router-dom';
 import { format } from 'date-fns';
@@ -16,8 +16,6 @@ import {
   AccordionContent,
   Checkbox,
   Typography,
-  DatePicker,
-  Textarea,
   Button,
   Radio,
   Flex,
@@ -35,15 +33,12 @@ import {
   BreadcrumbItem,
   BreadcrumbLink,
   BreadcrumbList,
-  BreadcrumbPage,
   BreadcrumbSeparator,
 } from '../../../components/ui/breadcrumb';
-import { Badge } from '../../../components/elements/badge';
+import CustomBadge from '../../../components/elements/badge';
 import FormCheckbox from '../../../components/elements/form/checkbox';
 import FileUpload from '../../../components/elements/form/fileinput';
 import CreateCampaignModal from './createCampaignModal';
-import EditCampaignModal from './EditCampaignModal';
-import AdDurationOverlapModal from './AdDurationOverlapModal';
 import { truncate } from '../../../utils/utils';
 import CustomButton from '../../../components/elements/customButton';
 
@@ -51,7 +46,7 @@ import iphoneFrame from '../../../assets/phoneFrame.png';
 import FormInput from '../../../components/elements/form/input';
 import FormDatePicker from '../../../components/elements/form/datepicker';
 import FormTextArea from '../../../components/elements/form/textarea';
-import Save from '../../../components/icons/Save';
+import Save from '../../../components/Icons/Save';
 import { FootprintsIcon } from 'lucide-react';
 import phoneImage from '../../../assets/phoneFrame.png';
 import homeCarousel from '../../../assets/homeCarousel.png';
@@ -64,6 +59,9 @@ import Arrow from '../../../components/Icons/Arrow';
 import useAdType from '../../../components/hooks/useAdType';
 import ConfirmArchiveModal from '../../Components/confirmArchiveModal';
 import ConfirmUnpublishModal from '../../Components/confirmUnpublishModal';
+import EditCampaignModal from './editCampaignModal';
+import useCampaignDetails from '../../../components/hooks/useCampaignDetails';
+import BackButton from '../../../components/elements/backButton';
 
 // TEMP: Placeholder for transformPayload to prevent runtime error
 const transformPayload = ({ campaignName, ads }) => ({
@@ -86,18 +84,12 @@ export const defaultAdValues = {
 
 const CampaignForm = ({
   mode, // 'create' | 'edit' | 'view'
-  initialValues = {
-    campaignName: '',
-    directory: false,
-    news: false,
-    events: false,
-    offers: false,
-    ads: [],
-  },
+  campaignId = null,
   onSubmit = () => {},
 }) => {
   const history = useHistory();
   const { adTypes } = useAdType();
+  const { campaign } = useCampaignDetails(Number(campaignId));
   const [isOpenCreateCampaignModal, setIsOpenCreateCampaignModal] = React.useState(false);
   const [isOpenEditCampaignModal, setIsOpenEditCampaignModal] = React.useState(false);
   const morePopoverRef = React.useRef(null);
@@ -108,7 +100,7 @@ const CampaignForm = ({
 
   const methods = useForm({
     // resolver: zodResolver(CampaignSchema),
-    defaultValues: initialValues,
+    // defaultValues: initialValues,
   });
 
   const errors = methods.formState.errors;
@@ -253,6 +245,7 @@ const CampaignForm = ({
         setIsOpen={setIsOpenUnpublishCampaignModal}
         onSubmit={() => {}}
       />
+      {(mode === 'edit' || mode === 'view') && <BackButton />}
       <form
         className="py-16"
         // onSubmit={methods.handleSubmit(handlePublish, (errors) => {
@@ -274,8 +267,8 @@ const CampaignForm = ({
                   {format(new Date('2025-12-01'), 'MM/dd/yy')} -{' '}
                   {format(new Date('2024-12-31'), 'MM/dd/yy')}
                 </p>
-                {/* <Badge $variant={feature.status}>{feature.status}</Badge>  */}
-                <Badge $variant="live">Live</Badge>
+                {/* <CustomBadge variant={feature.status}>{feature.status}</CustomBadge> */}
+                <CustomBadge variant="live">Live</CustomBadge>
               </Flex>
               <Typography variant="alpha">Tourism Q1</Typography>
               <Breadcrumb>
@@ -538,6 +531,7 @@ const CampaignForm = ({
                         //     setActiveAdIdx(activeAdIdx === idx ? null : idx);
                         //   }
                         // }}
+
                         toggle={() => {
                           setActiveAdIdx(activeAdIdx === idx ? null : idx);
                         }}
@@ -548,11 +542,47 @@ const CampaignForm = ({
                       >
                         <AccordionToggle
                           style={{ width: '100%' }}
+                          action={
+                            mode === 'edit' && (
+                              <Flex style={{ marginLeft: '180px' }} gap={2}>
+                                <CustomButton
+                                  onClick={(e) => {
+                                    e.stopPropagation();
+                                    e.preventDefault();
+                                    console.log('unpublish');
+                                  }}
+                                >
+                                  <Pause stroke="#32324d" />
+                                  Unpublish
+                                </CustomButton>
+                                <CustomButton
+                                  onClick={(e) => {
+                                    e.stopPropagation();
+                                    e.preventDefault();
+                                    console.log('report');
+                                  }}
+                                >
+                                  <Analytics stroke="#32324d" />
+                                  Report
+                                </CustomButton>
+                                <CustomButton
+                                  onClick={(e) => {
+                                    e.stopPropagation();
+                                    e.preventDefault();
+                                    console.log('edit');
+                                  }}
+                                >
+                                  <Edit stroke="#32324d" />
+                                  Edit
+                                </CustomButton>
+                              </Flex>
+                            )
+                          }
                           title={
                             <Flex
                               style={{ width: 'auto' }}
                               direction="row"
-                              alignItems="flex-start"
+                              alignItems="center"
                               gap={1}
                             >
                               <Checkbox
@@ -563,60 +593,22 @@ const CampaignForm = ({
                                 onClick={(e) => e.stopPropagation()}
                                 disabled={mode === 'view'}
                               />
-
                               <Flex direction="column" alignItems="flexStart" gap={2}>
                                 <Flex gap={2} alignItems="center">
                                   <Typography>{`Ad ${idx + 1}`}</Typography>
-                                  {mode === 'edit' && <Badge $variant="live">Live</Badge>}
-                                  {mode === 'create' && <Badge $variant="draft">Draft</Badge>}
+                                  {mode === 'edit' && (
+                                    <CustomBadge variant="live">Live</CustomBadge>
+                                  )}
+                                  {mode === 'create' && (
+                                    <CustomBadge variant="draft">Draft</CustomBadge>
+                                  )}
                                 </Flex>
 
                                 <Typography>{formAds[idx]?.name || 'Ad Title Preview'}</Typography>
                               </Flex>
-                              {mode === 'edit' && (
-                                <Flex style={{ marginLeft: '180px' }} gap={2}>
-                                  <CustomButton onClick={() => {}}>
-                                    <Pause stroke="#32324d" />
-                                    Unpublish
-                                  </CustomButton>
-                                  {/* <Button
-                                    startIcon={<Pause stroke="#000" />}
-                                    variant="tertiary"
-                                    onClick={() => {}}
-                                  >
-                                    Unpublish
-                                  </Button> */}
-                                  <CustomButton onClick={() => {}}>
-                                    <Analytics stroke="#32324d" />
-                                    Report
-                                  </CustomButton>
-                                  {/* <Button
-                                    startIcon={<Analytics stroke="#000" />}
-                                    variant="tertiary"
-                                    onClick={() => {}}
-                                  >
-                                    Report
-                                  </Button> */}
-                                  <CustomButton onClick={() => {}}>
-                                    <Edit stroke="#32324d" />
-                                    Edit
-                                  </CustomButton>
-                                  {/* <Button
-                                    startIcon={<Pencil fill="neutral1000" />}
-                                    variant="tertiary"
-                                    // onClick={(e) => {
-                                    //   e.stopPropagation();
-                                    //   setActiveAdIdx(activeAdIdx === idx ? null : idx);
-                                    // }}
-                                  >
-                                    Edit
-                                  </Button> */}
-                                </Flex>
-                              )}
                             </Flex>
                           }
                           description={null}
-                          action={null}
                         />
                         <AccordionContent padding="24px">
                           <div className="flex flex-col gap-5 mt-4 p-8">
@@ -745,7 +737,8 @@ const CampaignForm = ({
                                               <Flex gap={4}>
                                                 {adSpot.ad_screens.map((screen) => (
                                                   <FormCheckbox
-                                                    name={`ads.${idx}.${screen.ad_screen_id}`}
+                                                    name={`ads.${idx}.screens`}
+                                                    value={screen.ad_screen_id}
                                                     label={screen.ad_screen_title}
                                                   />
                                                 ))}
