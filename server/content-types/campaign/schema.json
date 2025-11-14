@@ -30,18 +30,21 @@
       "type": "string"
     },
     "campaign_status": {
-      "type": "relation",
-      "relation": "oneToOne",
-      "target": "plugin::strapi-ads.ad-status"
+      "type": "enumeration",
+      "enum": [
+        "draft",
+        "active",
+        "inactive",
+        "expired",
+        "archived"
+      ],
+      "default": "draft"
     },
     "ads": {
       "type": "relation",
       "relation": "oneToMany",
       "target": "plugin::strapi-ads.ad",
       "mappedBy": "campaign"
-    },
-    "archive": {
-      "type": "boolean"
     }
   }
 }

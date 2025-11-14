@@ -19,9 +19,14 @@
       "targetField": "ad_name"
     },
     "ad_status": {
-      "type": "relation",
-      "relation": "oneToOne",
-      "target": "plugin::strapi-ads.ad-status"
+      "type": "enumeration",
+      "enum": [
+        "draft",
+        "live",
+        "inactive",
+        "expired"
+      ],
+      "default": "draft"
     },
     "ad_start_date": {
       "required": true,

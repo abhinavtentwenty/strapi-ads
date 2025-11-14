@@ -18,13 +18,13 @@ module.exports = createCoreController(modelName, ({ strapi }) => ({
 
             // Add default ad_status if not provided
             if(!filters.ad_status){
-                filters.ad_status={status_id:'live'};
+                filters.ad_status='live';
             }
             // Add default campaign.campaign_status if not provided
             if(!filters.campaign){
-                filters.campaign={campaign_status:{status_id:'live'}};
+                filters.campaign={campaign_status:'active'};
             }else if(!filters.campaign.campaign_status){
-                filters.campaign.campaign_status={status_id:'live'};
+                filters.campaign.campaign_status='active';
             }
 
             const ads=await strapi.service(modelName).find({
