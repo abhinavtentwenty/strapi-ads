@@ -1,6 +1,6 @@
 {
   "name": "strapi-ads",
-  "version": "0.0.2",
+  "version": "0.0.3",
   "description": "Ads module for Strapi CMS",
   "license": "MIT",
   "author": {
