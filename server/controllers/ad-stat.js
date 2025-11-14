@@ -1,6 +1,4 @@
 'use strict';
-
-const {errorResponse}=require("../../../../../helpers/error-handler");
 /**
  *  controller
  */
@@ -25,7 +23,7 @@ module.exports = createCoreController(modelName, ({ strapi }) => ({
             const { id: ad_id } = ctx.request.params;
             return await strapi.service(modelName).increment(ad_id, impressions, clicks);
         } catch (error) {
-            await errorResponse(ctx, error);
+            return error;
         }
     },
     async bulkIncrement(ctx) {
@@ -38,7 +36,7 @@ module.exports = createCoreController(modelName, ({ strapi }) => ({
             );
             return { results };
         } catch (error) {
-            await errorResponse(ctx, error);
+            return error;
         }
     },
 }));
