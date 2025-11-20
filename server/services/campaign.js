@@ -11,7 +11,7 @@ module.exports = createCoreService('plugin::strapi-ads.campaign', ({ strapi }) =
   async duplicate(ctx) {
     const { id } = ctx.params;
     const originalCampaign = await strapi.entityService.findOne('plugin::strapi-ads.campaign', id, {
-      populate: ['ads', 'campaign_status', 'ads.ad_status', 'ads.ad_image'],
+      populate: ['ads', 'ads.ad_image'],
     });
     if (!originalCampaign) {
       ctx.throw(404, 'Campaign not found');
@@ -33,7 +33,8 @@ module.exports = createCoreService('plugin::strapi-ads.campaign', ({ strapi }) =
       data: {
         ...campaignData,
         campaign_name: campaignData.campaign_name,
-        published: false,
+        campaign_status: 'draft',
+        published: true,
       },
     });
     // @ts-ignore
@@ -58,7 +59,8 @@ module.exports = createCoreService('plugin::strapi-ads.campaign', ({ strapi }) =
             ...adData,
             campaign: duplicatedCampaign.id,
             ad_image: ad_image ? ad_image.id : null,
-            published: false,
+            ad_status: 'draft',
+            published: true,
           },
         });
       }

@@ -16,7 +16,9 @@
       "type": "media",
       "multiple": true,
       "required": false,
-      "allowedTypes": ["images", "files", "videos", "audios"]
+      "allowedTypes": [
+        "images"
+      ]
     },
     "title": {
       "type": "string"

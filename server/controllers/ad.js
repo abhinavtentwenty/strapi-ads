@@ -31,8 +31,21 @@ module.exports = createCoreController(modelName, ({ strapi }) => ({
                 filters:{
                     ...filters, ad_start_date:{$lte:today}, $or:[{ad_end_date:null},{ad_end_date:{$gte:today}}],
                 },
-                populate:{ ...populate, ad_image:true, ad_type:true, ad_spot:true },
-                pagination,
+                populate:{ ...populate, ad_image:true, ad_type:true, ad_spot:true, ad_screens:true },
+                pagination: {pageSize: 100, ...pagination },
+            });
+
+            ads.results.forEach(ad => {
+                if (ad.ad_start_date) {
+                    const date = new Date(ad.ad_start_date);
+                    date.setHours(23, 59, 59, 999);
+                    ad.ad_start_date_iso = date.toISOString();
+                }
+                if (ad.ad_end_date) {
+                    const date = new Date(ad.ad_end_date);
+                    date.setHours(23, 59, 59, 999);
+                    ad.ad_end_date_iso = date.toISOString();
+                }
             });
 
             return ads;

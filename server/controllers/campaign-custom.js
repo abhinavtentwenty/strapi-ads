@@ -48,10 +48,13 @@ module.exports = ({ strapi }) => ({
     return { ...campaigns, results: campaignsWithDates };
   },
   async findOne(ctx) {
+    const { populate = {} } = ctx.request.query;
     const { id } = ctx.params;
-    const campaign = await strapi.entityService.findOne('plugin::strapi-ads.campaign', id, {
-      populate: ['ads', 'campaign_status', 'ads.ad_status', 'ads.ad_image'],
+    const campaign = await strapi.db.query('plugin::strapi-ads.campaign').findOne({
+      where: { id: id },
+      populate: { ads:{ populate: { ad_type: true, ad_screens: true, ad_spot: true } }, ...populate },
     });
+
     ctx.body = campaign;
   },
   async duplicate(ctx) {

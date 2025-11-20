@@ -24,7 +24,8 @@
         "draft",
         "live",
         "inactive",
-        "expired"
+        "expired",
+        "archived"
       ],
       "default": "draft"
     },

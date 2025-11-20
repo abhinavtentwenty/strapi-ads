@@ -20,7 +20,7 @@
     },
     "ad_spot": {
       "type": "relation",
-      "relation": "manyToOne",
+      "relation": "manyToMany",
       "target": "plugin::strapi-ads.ad-spot",
       "inversedBy": "ad_screens"
     }

@@ -30,7 +30,8 @@ module.exports = createCoreService('plugin::strapi-ads.ad', ({ strapi }) => ({
         ...adData,
         campaign: campaign ? campaign?.id : null,
         ad_image: ad_image ? ad_image?.id : null,
-        published: false,
+        ad_status: 'draft',
+        published: true,
       },
     });
     return await strapi.entityService.findOne('plugin::strapi-ads.ad', duplicatedAd?.id, {

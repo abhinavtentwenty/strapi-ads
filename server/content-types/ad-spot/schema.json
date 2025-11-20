@@ -24,7 +24,7 @@
     },
     "ad_screens": {
       "type": "relation",
-      "relation": "oneToMany",
+      "relation": "manyToMany",
       "target": "plugin::strapi-ads.ad-screen",
       "mappedBy": "ad_spot"
     },
