@@ -7,6 +7,8 @@ const ad = require('./ad');
 const adScreen = require('./ad-screen');
 const adSpot = require('./ad-spot');
 const adStat = require('./ad-stat');
+const campaignStat = require('./campaign-stat');
+const dailySystemStat = require('./daily-system-stat');
 const adType = require('./ad-type');
 const campaign = require('./campaign');
 
@@ -20,4 +22,6 @@ module.exports = {
   'ad-screen': adScreen,
   'ad-spot': adSpot,
   'ad-stat': adStat,
+  'campaign-stat': campaignStat,
+  'daily-system-stat': dailySystemStat,
 };

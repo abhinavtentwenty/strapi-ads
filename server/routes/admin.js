@@ -105,5 +105,37 @@ module.exports = {
         policies: [],
       },
     },
+    {
+      method: 'GET',
+      path: '/ad/stat/:id',
+      handler: 'ad.fetchStat',
+      config: {
+        policies: [],
+      },
+    },
+    {
+      method: 'GET',
+      path: '/campaign/stat/:id',
+      handler: 'campaign.fetchStat',
+      config: {
+        policies: [],
+      },
+    },
+    {
+      method: 'GET',
+      path: '/campaign/stat-overall',
+      handler: 'campaign.fetchStatOverall',
+      config: {
+        policies: [],
+      },
+    },
+    {
+      method: 'GET',
+      path: '/get-destination-pages/:ad_destination_model',
+      handler: 'ad.getDestinationPage',
+      config: {
+        policies: [],
+      },
+    },
   ],
 };

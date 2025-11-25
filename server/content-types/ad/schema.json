@@ -88,6 +88,12 @@
       "type": "relation",
       "relation": "oneToMany",
       "target": "plugin::strapi-ads.ad-screen"
+    },
+    "total_impressions": {
+        "type": "biginteger"
+    },
+    "total_clicks": {
+        "type": "biginteger"
     }
   }
 }

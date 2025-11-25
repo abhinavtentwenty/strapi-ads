@@ -1,10 +1,10 @@
 {
   "kind": "collectionType",
-  "collectionName": "ad_stats",
+  "collectionName": "campaign_stats",
   "info": {
-    "singularName": "ad-stat",
-    "pluralName": "ad-stats",
-    "displayName": "Ad Stat",
+    "singularName": "campaign-stat",
+    "pluralName": "campaign-stats",
+    "displayName": "Campaign Stat",
     "description": ""
   },
   "options": {
@@ -12,7 +12,7 @@
   },
   "pluginOptions": {},
   "attributes": {
-    "ad_id": {
+    "campaign_id": {
       "type": "string"
     },
     "stat_date": {

@@ -1,10 +1,10 @@
 {
   "kind": "collectionType",
-  "collectionName": "ad_stats",
+  "collectionName": "daily_system_stats",
   "info": {
-    "singularName": "ad-stat",
-    "pluralName": "ad-stats",
-    "displayName": "Ad Stat",
+    "singularName": "daily-system-stat",
+    "pluralName": "daily-system-stats",
+    "displayName": "Daily System Stat",
     "description": ""
   },
   "options": {
@@ -12,9 +12,6 @@
   },
   "pluginOptions": {},
   "attributes": {
-    "ad_id": {
-      "type": "string"
-    },
     "stat_date": {
       "type": "date"
     },
@@ -28,6 +25,12 @@
       "type": "biginteger"
     },
     "total_clicks": {
+      "type": "biginteger"
+    },
+    "active_campaigns": {
+      "type": "biginteger"
+    },
+    "active_ads": {
       "type": "biginteger"
     }
   }

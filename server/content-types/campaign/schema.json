@@ -45,6 +45,12 @@
       "relation": "oneToMany",
       "target": "plugin::strapi-ads.ad",
       "mappedBy": "campaign"
+    },
+    "min_date": {
+      "type": "date"
+    },
+    "max_date": {
+      "type": "date"
     }
   }
 }
