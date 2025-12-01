@@ -23,5 +23,13 @@ module.exports = {
       path: '/ad-stat/increment',
       handler: 'ad-stat.bulkIncrement',
     },
+    {
+      method: 'GET',
+      path: '/download-csv/:id/:title',
+      handler: 'ad.downloadAdsReport',
+      config: {
+        policies: [],
+      },
+    }
   ],
 };

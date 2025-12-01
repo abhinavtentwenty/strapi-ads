@@ -37,6 +37,7 @@ module.exports = createCoreController(modelName, ({ strapi }) => ({
             );
             return { results };
         } catch (error) {
+            console.log(error);
             return error;
         }
     },

@@ -51,6 +51,12 @@
     },
     "max_date": {
       "type": "date"
+    },
+    "total_impressions": {
+      "type": "biginteger"
+    },
+    "total_clicks": {
+      "type": "biginteger"
     }
   }
 }

@@ -74,6 +74,22 @@ module.exports = {
       },
     },
     {
+      method: 'GET',
+      path: '/ad/generate-report',
+      handler: 'ad.generateAdsReport',
+      config: {
+        policies: [],
+      },
+    },
+    {
+      method: 'GET',
+      path: '/campaign/generate-report',
+      handler: 'campaign.generateAdsReport',
+      config: {
+        policies: [],
+      },
+    },
+    {
       method: 'POST',
       path: '/ad',
       handler: 'ad.create',
@@ -109,6 +125,30 @@ module.exports = {
       method: 'GET',
       path: '/ad/stat/:id',
       handler: 'ad.fetchStat',
+      config: {
+        policies: [],
+      },
+    },
+    {
+      method: 'GET',
+      path: '/ad/graph',
+      handler: 'ad-stat.find',
+      config: {
+        policies: [],
+      },
+    },
+    {
+      method: 'GET',
+      path: '/campaign/graph',
+      handler: 'campaign-stat.find',
+      config: {
+        policies: [],
+      },
+    },
+    {
+      method: 'GET',
+      path: '/overall/graph',
+      handler: 'daily-system-stat.find',
       config: {
         policies: [],
       },

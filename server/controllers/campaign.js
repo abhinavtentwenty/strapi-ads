@@ -170,4 +170,14 @@ module.exports = createCoreController(modelName, ({ strapi }) => ({
           return e;
       }
   },
+
+  async generateAdsReport(ctx){
+    try{
+      return strapi.plugin('strapi-ads').service('campaign').generateAdsReport(ctx);
+    }catch(e){
+      console.error(e);
+      return e;
+    }
+  },
+
 }));
