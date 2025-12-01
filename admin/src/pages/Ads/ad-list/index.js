@@ -33,16 +33,23 @@ import AdActionMenu from '../adActionMenu';
 import BadgeCustom from '../../../components/elements/badge';
 import useAds from '../../../components/hooks/useAds';
 import useCampaigns from '../../../components/hooks/useCampaigns';
-import useAdStatus from '../../../components/hooks/useAdStatus';
 import useAdType from '../../../components/hooks/useAdType';
+import { AD_STATUS_OPTIONS } from '../../../utils/constants';
+import StatusBadge from '../../../components/elements/statusBadge';
+import CustomBadge from '../../../components/elements/badge';
+import { useFetchClient } from '@strapi/helper-plugin';
+import qs from 'qs';
+import pluginId from '../../../pluginId';
 
 const TrStyles = 'text-xl text-[#62627B] uppercase font-bold';
 const TdStyles = 'text-2xl';
 
 const AdList = () => {
   const history = useHistory();
+  const { get } = useFetchClient();
+
   const [campaign, setCampaign] = useState('');
-  const [status, setStatus] = useState('all');
+  const [status, setStatus] = useState(['']);
   const [filter, setFilter] = useState('');
   const [type, setType] = useState('');
   const [search, setSearch] = useState('');
@@ -52,12 +59,34 @@ const AdList = () => {
 
   const { ads, pagination } = useAds({ page, pageSize, status, type, search, campaign });
 
-  // TODO: Handle this afterwards
-  const { adStatus } = useAdStatus();
-  console.log('adStatus', adStatus);
   const { adTypes } = useAdType();
-  const { campaigns } = useCampaigns({ paginated: false });
-  const campaignNames = campaigns.map((c) => c.campaign_name);
+  const [activeCampaignPage, setActiveCampaignPage] = React.useState(1);
+  const [activeCampaignPageOptions, setActiveCampaignPageOptions] = React.useState([]);
+  const { campaigns, pagination: campaignPagination } = useCampaigns({
+    page: activeCampaignPage ?? 1,
+    pageSize: 10,
+  });
+
+  React.useEffect(() => {
+    if (!campaigns) return;
+
+    setActiveCampaignPageOptions((prev) => {
+      if (activeCampaignPage === 1) {
+        return campaigns.map((c) => ({
+          id: c.id,
+          value: c.campaign_name,
+        }));
+      }
+
+      return [
+        ...prev,
+        ...campaigns.map((c) => ({
+          id: c.id,
+          value: c.campaign_name,
+        })),
+      ];
+    });
+  }, [campaigns, activeCampaignPage]);
 
   const currentPage = pagination?.page || 1;
   const totalPages = pagination?.pageCount || 1;
@@ -67,9 +96,34 @@ const AdList = () => {
     if (currentPage > totalPages) setPage(1);
   }, [totalPages]);
 
-  const filteredCampaignOptions = campaignNames.filter((c) =>
-    c.toLowerCase().includes(filter.toLowerCase())
+  const filteredCampaignOptions = activeCampaignPageOptions.filter((c) =>
+    c.value.toLowerCase().includes(filter.toLowerCase())
   );
+
+  const handleDownloadCSV = async () => {
+    try {
+      const cleanStatus = status.filter(Boolean);
+
+      const query = qs.stringify(
+        {
+          filters: {
+            ...(type !== '' && { ad_type: type }),
+            ...(campaign !== '' && {
+              campaign,
+            }),
+            ...(cleanStatus.length > 0 && { ad_status: cleanStatus }),
+            ...(search && { ad_name: { $containsi: search } }),
+          },
+        },
+        { encodeValuesOnly: true }
+      );
+
+      const response = await get(`/${pluginId}/ad/generate-report?${query}`);
+      window.open(response?.data?.downloadUrl, '_blank');
+    } catch (error) {
+      console.error('Error downloading CSV:', error);
+    }
+  };
 
   return (
     <div>
@@ -82,7 +136,7 @@ const AdList = () => {
             Abu Dhabi Global Market - Ads
           </Typography>
         </Flex>
-        <Button size="L" variant="tertiary" onClick={() => {}}>
+        <Button size="L" variant="tertiary" onClick={handleDownloadCSV}>
           Export CSV
         </Button>
       </Flex>
@@ -117,19 +171,33 @@ const AdList = () => {
                 filterValue={filter}
                 onFilterValueChange={(v) => setFilter(v ?? '')}
               >
+                <ComboboxOption key={0} value="">
+                  All Campaigns
+                </ComboboxOption>
                 {filteredCampaignOptions.map((c) => (
-                  <ComboboxOption key={c} value={c}>
-                    {c}
+                  <ComboboxOption key={c.id} value={c.id}>
+                    {c.value}
                   </ComboboxOption>
                 ))}
+                {activeCampaignPage < campaignPagination?.pageCount && (
+                  <Button
+                    style={{ width: '100%' }}
+                    variant="tertiary"
+                    onClick={() => setActiveCampaignPage((prev) => prev + 1)}
+                  >
+                    Load More
+                  </Button>
+                )}
               </Combobox>
               <MultiSelect value={status} onChange={(value) => setStatus(value)}>
-                <MultiSelectOption value="all">All Statuses</MultiSelectOption>
-                <MultiSelectOption value="active">Active</MultiSelectOption>
-                <MultiSelectOption value="paused">Paused</MultiSelectOption>
+                {AD_STATUS_OPTIONS.map((status) => (
+                  <MultiSelectOption key={status.value} value={status.value}>
+                    {status.label}
+                  </MultiSelectOption>
+                ))}
               </MultiSelect>
               <SingleSelect value={type} onChange={(value) => setType(String(value))}>
-                <SingleSelectOption key={0} value={''}>
+                <SingleSelectOption key={0} value="">
                   All Types
                 </SingleSelectOption>
                 {adTypes.map((type) => (
@@ -149,7 +217,9 @@ const AdList = () => {
                   <Typography variant="pi" fontWeight="bold" textColor="neutral700">
                     Ad
                   </Typography>
-                  <button onClick={() => console.log('sort campaigns')}>
+                  <button
+                  // onClick={() => console.log('sort campaigns')}
+                  >
                     <CarretDown className="size-2" />
                   </button>
                 </div>
@@ -214,79 +284,58 @@ const AdList = () => {
                         style={{ width: 44, height: 44, borderRadius: 6 }}
                       />
                       <div className="flex flex-col gap-1">
-                        <p className="text-sm font-normal leading-5">{ad.attributes.ad_headline}</p>
+                        <p className="text-sm font-normal leading-5">{ad?.ad_name}</p>
                         <div className=" flex items-center gap-1">
-                          <BadgeCustom variant="draft">Native card</BadgeCustom>
-                          <BadgeCustom variant="grayOutline">Lifestyle listing</BadgeCustom>
+                          {ad?.ad_type && (
+                            <CustomBadge variant="draft">{ad.ad_type?.title}</CustomBadge>
+                          )}
+                          {ad?.ad_spot && (
+                            <CustomBadge variant="grayOutline">
+                              {ad.ad_spot?.ad_spot_title}
+                            </CustomBadge>
+                          )}
                         </div>
                       </div>
                     </div>
                   </Td>
                   {/* Campaign date range (static for now) */}
                   <Td className={TdStyles}>
-                    {ad?.attributes?.ad_start_date
-                      ? format(new Date(ad.attributes.ad_start_date), 'dd/MM/yyyy')
-                      : ''}{' '}
-                    -{' '}
-                    {ad?.attributes?.ad_end_date
-                      ? format(new Date(ad.attributes.ad_end_date), 'dd/MM/yyyy')
-                      : ''}
+                    {ad?.ad_start_date ? format(new Date(ad?.ad_start_date), 'dd/MM/yyyy') : ''} -{' '}
+                    {ad?.ad_end_date ? format(new Date(ad?.ad_end_date), 'dd/MM/yyyy') : ''}
                   </Td>
 
-                  {/* Campaign status */}
-                  {/* TODO: handle this later */}
-                  {/* <Td className={TdStyles}>
-                    <Badge
-                      backgroundColor={
-                        ad?.campaign_status?.status_title === 'Live'
-                          ? 'success100'
-                          : ad?.campaign_status?.status_title === 'Draft'
-                            ? 'neutral100'
-                            : 'danger100'
-                      }
-                      textColor={
-                        ad?.campaign_status?.status_title === 'Live'
-                          ? 'success500'
-                          : ad?.campaign_status?.status_title === 'Draft'
-                            ? 'neutral600'
-                            : 'danger500'
-                      }
-                    >
-                      {ad?.campaign_status?.status_title}
-                    </Badge>
-                  </Td> */}
                   <Td className={TdStyles}>
-                    <Badge backgroundColor={'success100'} textColor={'success500'}>
-                      Live
-                    </Badge>
+                    <StatusBadge status={ad?.ad_status} />
                   </Td>
+
                   <Td className={TdStyles}>
                     <Typography as="span" variant="epsilon">
-                      {ad?.attributes?.campaign?.data?.attributes?.campaign_name || ''}
+                      {ad?.campaign?.campaign_name || ''}
                     </Typography>
                   </Td>
                   <Td className={TdStyles}>
                     <Badge
-                      // backgroundColor="neutral150"
-                      backgroundColor="primary200"
+                      backgroundColor={ad?.ad_external_url ? 'primary100' : 'neutral150'}
                       textColor="neutral900"
                     >
-                      Internal
+                      {ad?.ad_external_url ? 'External' : 'Internal'}
                     </Badge>
                   </Td>
                   <Td className={TdStyles}>
                     <Typography as="span" variant="epsilon">
-                      {Math.floor(Math.random() * 10000)}
+                      {ad?.total_impressions ?? ''}
                     </Typography>
                   </Td>
                   <Td className={TdStyles}>
                     <Typography as="span" variant="epsilon">
-                      {Math.floor(Math.random() * 10000)}
+                      {ad?.total_clicks ?? ''}
                     </Typography>
                   </Td>
                   <Td className={TdStyles}>
                     <Typography as="span" variant="epsilon">
-                      {`${Math.floor(Math.random() * 100)}%`}
+                      {ad?.total_clicks && ad?.total_impressions
+                        ? `${(ad?.total_clicks / ad?.total_impressions) * 100}%`
+                        : '0%'}
                     </Typography>
                   </Td>
                   {/* Action menu for campaign */}
@@ -359,7 +408,7 @@ const AdList = () => {
                       1
                     </PageLink>
                   );
-                  if (start > 2) links.push(<Dots key="dots-start">...</Dots>);
+                  if (start > 2) links.push(<p>...</p>);
                 }
                 for (let i = start; i <= end; i++) {
                   links.push(
@@ -378,7 +427,7 @@ const AdList = () => {
                   );
                 }
                 if (end < totalPages) {
-                  if (end < totalPages - 1) links.push(<Dots key="dots-end">...</Dots>);
+                  if (end < totalPages - 1) links.push(<p key="dots-end">...</p>);
                   links.push(
                     <PageLink
                       key={totalPages}

@@ -3,15 +3,7 @@ import { Area, AreaChart, CartesianGrid, XAxis, YAxis } from 'recharts';
 import { ChartContainer, ChartTooltip, ChartTooltipContent } from '../../components/ui/charts';
 import React from 'react';
 import { useTheme } from '@strapi/design-system';
-
-const chartData = [
-  { date: 'Jan 1', ctr: 1.5 },
-  { date: 'Jan 2', ctr: 2.0 },
-  { date: 'Jan 3', ctr: 1.5 },
-  { date: 'Jan 4', ctr: 4.5 },
-  { date: 'Jan 5', ctr: 1.3 },
-  { date: 'Jan 6', ctr: 1.4 },
-];
+import { format, parseISO } from 'date-fns';
 
 const chartConfig = {
   ctr: {
@@ -20,8 +12,21 @@ const chartConfig = {
   },
 };
 
-const ClickThroughRateTrend = () => {
+const formatCTRChartData = (apiData) => {
+  if (!Array.isArray(apiData)) return [];
+  return apiData.map((item) => {
+    const { stat_date, impressions, clicks } = item.attributes;
+    const ctr = Number(impressions) > 0 ? (Number(clicks) / Number(impressions)) * 100 : 0;
+    return {
+      date: format(parseISO(stat_date), 'MMM d'),
+      ctr: Number(ctr.toFixed(2)),
+    };
+  });
+};
+
+const ClickThroughRateTrend = ({ data }) => {
   const theme = useTheme();
+  const chartData = formatCTRChartData(data);
   return (
     <ChartContainer className="h-[350px] w-full" config={chartConfig}>
       <AreaChart

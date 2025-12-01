@@ -6,6 +6,7 @@ import qs from 'qs';
 import { useForm } from 'react-hook-form';
 import {
   Button,
+  Badge,
   Dots,
   NextLink,
   PageLink,
@@ -34,6 +35,11 @@ import TabButton from '../../components/elements/tabButton';
 
 import ListView from './listView';
 import TimelineView from './timelineView';
+import { CAMPAIGN_STATUS_OPTIONS, TIMEFRAME_OPTIONS } from '../../utils/constants';
+import useAdType from '../../components/hooks/useAdType';
+import getTimeframeDate from '../../utils/getTimeframeDate';
+import pluginId from '../../pluginId';
+import { useFetchClient } from '@strapi/helper-plugin';
 
 const Dashboard = () => {
   /**
@@ -42,9 +48,12 @@ const Dashboard = () => {
    * All state variables used in the Dashboard component are grouped here for clarity and maintainability.
    * ===============================
    */
-  const [status, setStatus] = useState(['all']);
-  const [type, setType] = useState('all');
-  const [time, setTime] = useState('all');
+  const { get } = useFetchClient();
+
+  const { adTypes } = useAdType();
+  const [status, setStatus] = useState(['']);
+  const [type, setType] = useState('');
+  const [time, setTime] = useState('');
 
   const [search, setSearch] = useState('');
   // const debouncedSearch = useDebounce(search, 400);
@@ -92,6 +101,31 @@ const Dashboard = () => {
     if (currentPage > totalPages) setPage(1);
   }, [totalPages]);
 
+  const handleDownloadCSV = async () => {
+    try {
+      const cleanStatus = status.filter(Boolean);
+      const timeframeDate = getTimeframeDate(time);
+
+      const query = qs.stringify(
+        {
+          filters: {
+            ...(type !== '' && { ads: { ad_type: type } }),
+            ...(cleanStatus?.length > 0 && { campaign_status: cleanStatus }),
+            ...(search && { campaign_name: { $containsi: search } }),
+            ...(timeframeDate && {
+              createdAt: { $gte: timeframeDate.toISOString() },
+            }),
+          },
+        },
+        { encodeValuesOnly: true }
+      );
+
+      const response = await get(`/${pluginId}/campaign/generate-report?${query}`);
+      window.open(response?.data?.downloadUrl, '_blank');
+    } catch (error) {
+      console.error('Error downloading CSV:', error);
+    }
+  };
   return (
     <section className="py-16 !w-full overflow-hidden">
       <TabGroup
@@ -128,7 +162,7 @@ const Dashboard = () => {
                 </Button>
               </TabButton>
             </Tabs>
-            <Button size="L" variant="tertiary" onClick={() => history.push('custom-ui/campaign')}>
+            <Button size="L" variant="tertiary" onClick={handleDownloadCSV}>
               Export CSV
             </Button>
             <Button
@@ -165,20 +199,29 @@ const Dashboard = () => {
                 >
                   <></>
                 </Searchbar>
-                <MultiSelect value={status} onChange={(value) => setStatus(value)} size="S">
-                  <MultiSelectOption value="all">All Statuses</MultiSelectOption>
-                  <MultiSelectOption value="active">Active</MultiSelectOption>
-                  <MultiSelectOption value="paused">Paused</MultiSelectOption>
+                <MultiSelect value={status} onChange={(value) => setStatus(value)}>
+                  {CAMPAIGN_STATUS_OPTIONS.map((status) => (
+                    <MultiSelectOption key={status.value} value={status.value}>
+                      {status.label}
+                    </MultiSelectOption>
+                  ))}
                 </MultiSelect>
-                <SingleSelect value={type} onChange={(value) => setType(String(value))} size="S">
-                  <SingleSelectOption value="all">All Types</SingleSelectOption>
-                  <SingleSelectOption value="banner">Banner</SingleSelectOption>
-                  <SingleSelectOption value="video">Video</SingleSelectOption>
+                <SingleSelect value={type} onChange={(value) => setType(String(value))}>
+                  <SingleSelectOption key={0} value="">
+                    All Types
+                  </SingleSelectOption>
+                  {adTypes.map((type) => (
+                    <SingleSelectOption key={type?.id} value={type?.id}>
+                      {type?.title}
+                    </SingleSelectOption>
+                  ))}
                 </SingleSelect>
-                <SingleSelect value={time} onChange={(value) => setTime(String(value))} size="S">
-                  <SingleSelectOption value="all">All Time</SingleSelectOption>
-                  <SingleSelectOption value="banner">Banner</SingleSelectOption>
-                  <SingleSelectOption value="video">Video</SingleSelectOption>
+                <SingleSelect value={time} onChange={(value) => setTime(String(value))}>
+                  {TIMEFRAME_OPTIONS.map((timeframe) => (
+                    <SingleSelectOption key={timeframe?.value} value={timeframe?.value}>
+                      {timeframe?.label}
+                    </SingleSelectOption>
+                  ))}
                 </SingleSelect>
               </Flex>
             </Flex>

@@ -1,15 +1,17 @@
 // @ts-nocheck
 import React from 'react';
+import axios from 'axios';
 import { useHistory } from 'react-router-dom';
-import { format } from 'date-fns';
+import { format, parseISO, isValid } from 'date-fns';
+import { auth } from '@strapi/helper-plugin';
 import styled from 'styled-components';
-// import { zodResolver } from "@hookform/resolvers/zod";
-import { useForm, FormProvider, Controller } from 'react-hook-form';
-import { Plus, Rocket, More, Pencil } from '@strapi/icons';
+import { useForm, useWatch, FormProvider, Controller } from 'react-hook-form';
+import { Plus, Rocket, More, Pencil, CheckCircle } from '@strapi/icons';
 import Analytics from '../../../components/Icons/Analytics';
 import Edit from '../../../components/Icons/Edit';
 import Pause from '../../../components/Icons/Pause';
 import Archive from '../../../components/Icons/Archive';
+import { toast } from 'sonner';
 import {
   Accordion,
   AccordionToggle,
@@ -26,6 +28,8 @@ import {
   Tab,
   TabPanels,
   TabPanel,
+  SingleSelect,
+  SingleSelectOption,
 } from '@strapi/design-system';
 
 import {
@@ -62,24 +66,111 @@ import ConfirmUnpublishModal from '../../Components/confirmUnpublishModal';
 import EditCampaignModal from './editCampaignModal';
 import useCampaignDetails from '../../../components/hooks/useCampaignDetails';
 import BackButton from '../../../components/elements/backButton';
-
-// TEMP: Placeholder for transformPayload to prevent runtime error
-const transformPayload = ({ campaignName, ads }) => ({
-  campaignPayload: { campaignName },
-  adsPayload: ads,
-});
+import { useFetchClient } from '@strapi/helper-plugin';
+import pluginId from '../../../pluginId';
+import { CampaignSchema } from '../../../schemas/campaign';
+import { zodResolver } from '@hookform/resolvers/zod';
+import AdDurationOverlapModal from './adDurationOverlapModal';
+import StatusBadge from '../../../components/elements/statusBadge';
+import useUnpublishOrArchiveCampaign from '../../../components/hooks/useUnpublisOrArchiveCampaign';
+import { DESTINATION_MODEL_OPTIONS } from '../../../utils/constants';
+import useUnpublishOrArchiveAd from '../../../components/hooks/useUnpublisOrArchiveAd';
+import useDestinationPages from '../../../components/hooks/useDestinationPages';
+import { CalendarDate } from '@internationalized/date';
 
 // Default values for a new ad
 export const defaultAdValues = {
-  name: '',
-  title: '',
-  startDate: '',
-  endDate: '',
-  description: '',
-  destinationUrl: '',
-  adType: '',
-  files: [],
+  ad_name: '',
+  ad_start_date: null,
+  ad_end_date: null,
+  ad_type: 0,
+  ad_spot: 0,
+  ad_status: 'draft',
+  ad_screens: [],
+  ad_headline: '',
+  ad_external_url: '',
+  ad_destination_models: undefined,
+  ad_description: '',
+  ad_image: null,
+  is_external: 'yes',
+  ad_video_url: undefined,
   selected: false,
+};
+
+const PopoverItem = styled(Flex)`
+  padding: 8px 16px;
+  gap: 6px;
+  align-items: center;
+  cursor: pointer;
+  border-radius: 4px;
+  transition: background 0.2s ease;
+  &:hover {
+    background: ${({ theme }) => theme.colors.neutral100};
+  }
+`;
+
+const TabButton = styled(Tab)`
+  padding: 0; /* remove Tab's default padding */
+  border: none;
+  background: #eeeeee;
+
+  > div {
+    padding: 0 !important;
+    background: transparent !important;
+  }
+
+  &[aria-selected='true'] {
+    /* styles for active tab */
+    button {
+      background: #4945ff !important; /* active bg */
+      color: #ffffff !important; /* white text */
+    }
+
+    /* ensure ALL text + icon parts become white */
+    svg,
+    svg path,
+    span,
+    p,
+    div {
+      color: #ffffff !important;
+      fill: #ffffff !important;
+    }
+  }
+
+  &[aria-disabled='true'] {
+    cursor: not-allowed;
+    opacity: 0.6;
+  }
+`;
+
+const toCalendarDate = (ymdString) => {
+  if (!ymdString) return null;
+  const [y, m, d] = ymdString.split('-').map(Number);
+  return new CalendarDate(y, m, d); // THIS is what the DatePicker expects
+};
+
+const toUTCDate = (value) => {
+  if (!value) return null;
+
+  // Already Date
+  if (value instanceof Date) return value;
+
+  // Extract parts
+  const [y, m, d] = value.split('-').map(Number);
+
+  // Create UTC date (month is 0-indexed)
+  return new Date(Date.UTC(y, m - 1, d));
+};
+
+const toLocalDate = (value) => {
+  if (!value) return null;
+  if (value instanceof Date) return value;
+
+  // value = "2025-11-18"
+  const [y, m, d] = value.split('-').map(Number);
+
+  // Create LOCAL date (no timezone shift)
+  return new Date(y, m - 1, d);
 };
 
 const CampaignForm = ({
@@ -87,30 +178,167 @@ const CampaignForm = ({
   campaignId = null,
   onSubmit = () => {},
 }) => {
+  const resolver = zodResolver(CampaignSchema);
+  const { campaign } = useCampaignDetails(Number(campaignId));
+
+  const addDefaultValues = (mode === 'edit' || mode === 'view') && campaign;
+  const methods = useForm({
+    // TODO: enable validation later
+    // resolver: zodResolver(CampaignSchema),
+    defaultValues: {
+      campaign_name: '',
+      campaign_entity_type: 'adgm_entity',
+      campaign_entity_name: '',
+      campaign_entity_license_number: '',
+      ads: [],
+    },
+    shouldUnregister: false,
+  });
+
+  const { get, post, put } = useFetchClient();
+  const { updateCampaignStatus } = useUnpublishOrArchiveCampaign();
+  const { updateAdStatus } = useUnpublishOrArchiveAd();
+  const token = auth.getToken();
   const history = useHistory();
   const { adTypes } = useAdType();
-  const { campaign } = useCampaignDetails(Number(campaignId));
   const [isOpenCreateCampaignModal, setIsOpenCreateCampaignModal] = React.useState(false);
   const [isOpenEditCampaignModal, setIsOpenEditCampaignModal] = React.useState(false);
   const morePopoverRef = React.useRef(null);
   const [openMorePopover, setOpenMorePopover] = React.useState(false);
+  const [openAdDurationOverlapModal, setOpenAdDurationOverlapModal] = React.useState(false);
+  const [AdDurationOverlapData, setAdDurationOverlapData] = React.useState(null);
 
   const [isOpenArchiveCampaignModal, setIsOpenArchiveCampaignModal] = React.useState(false);
   const [isOpenUnpublishCampaignModal, setIsOpenUnpublishCampaignModal] = React.useState(false);
 
-  const methods = useForm({
-    // resolver: zodResolver(CampaignSchema),
-    // defaultValues: initialValues,
-  });
+  const [activeDestinationPageOptionsDefault, setActiveDestinationPageOptionsDefault] =
+    React.useState([]);
 
+  React.useEffect(() => {
+    if ((mode === 'edit' || mode === 'view') && campaign && Object.keys(campaign).length > 0) {
+      // Only reset if the campaign id is different from the current form value
+      if (methods.getValues('id') !== campaign.id) {
+        methods.reset({
+          id: campaign?.id || null,
+          campaign_name: campaign?.campaign_name || '',
+          campaign_entity_type: campaign?.campaign_entity_type || '',
+          campaign_entity_name: campaign?.campaign_entity_name || '',
+          campaign_entity_license_number: campaign?.campaign_entity_license_number || '',
+          ads:
+            campaign?.ads?.map((ad) => ({
+              id: ad?.id,
+              ad_name: ad?.ad_name,
+              ad_start_date: toUTCDate(ad.ad_start_date),
+              ad_end_date: toUTCDate(ad.ad_end_date),
+              ad_type: ad?.ad_type?.id,
+              ad_spot: ad?.ad_spot?.id,
+              ad_destination_models: ad?.ad_destination_models,
+              ad_destination_page: ad?.ad_destination_page,
+              ad_external_url: ad?.ad_external_url,
+              ad_status: ad?.ad_status?.status_title,
+              ad_screens: ad?.ad_screens.map((screen) => screen.id) || [],
+              ad_headline: ad?.ad_headline,
+              ad_description: ad?.ad_description,
+              is_external: ad?.ad_external_url ? 'yes' : 'no',
+              ad_image: null,
+              ad_image_url: Array.isArray(ad?.ad_image) && ad.ad_image[0] ? ad.ad_image[0].url : '',
+              ad_video_url: ad?.ad_video_url,
+              selected: ad?.ad_status?.status_title !== 'draft' ? true : false,
+            })) || [],
+        });
+      }
+    }
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [campaign?.id, mode]);
+
+  console.log('form values', methods.getValues());
   const errors = methods.formState.errors;
-  const campaignName = methods.watch('campaignName');
-  const formAds = methods.watch('ads') || [];
+  const campaign_name = useWatch({
+    control: methods.control,
+    name: 'campaign_name',
+    defaultValue: '',
+  });
+  const formAds = useWatch({ control: methods.control, name: 'ads', defaultValue: [] });
 
   // Track which ad accordion is open for preview (by index)
   const [activeAdIdx, setActiveAdIdx] = React.useState(null);
   const [activeAdType, setActiveAdType] = React.useState(null);
-  const adTypeWatch = methods.watch(`ads.${activeAdIdx}.adType`);
+  const adTypeWatch = useWatch({ control: methods.control, name: `ads.${activeAdIdx}.ad_type` });
+
+  // console.log('activeAdIdx', activeAdIdx);
+
+  React.useEffect(() => {
+    if (!activeAdIdx && activeAdIdx !== 0) return;
+
+    // console.log('fetching default destination page options');
+    const model = methods.getValues(`ads.${activeAdIdx}.ad_destination_models`);
+    const page = methods.getValues(`ads.${activeAdIdx}.ad_destination_page`);
+    if (
+      (mode === 'edit' || mode === 'view') &&
+      activeAdIdx !== undefined &&
+      model !== null &&
+      page !== null
+    ) {
+      const fetchDestinationPages = async () => {
+        const { data } = await get(
+          `/${pluginId}/get-destination-pages/${model}?filters[id]=${page}`
+        );
+        // console.log('fetched destination pages', data);
+        setActiveDestinationPageOptionsDefault(data?.results || []);
+      };
+
+      fetchDestinationPages();
+    }
+  }, [activeAdIdx]);
+
+  const watchCurrentDestinationModel = useWatch({
+    control: methods.control,
+    name: activeAdIdx !== null ? `ads.${activeAdIdx}.ad_destination_models` : '',
+    defaultValue: null,
+  });
+
+  // console.log('watchCurrentDestinationModel', watchCurrentDestinationModel);
+  const [activeDestinationPage, setActiveDestinationPage] = React.useState(1);
+  const [activeDestinationPageOptions, setActiveDestinationPageOptions] = React.useState([]);
+
+  const { destinationPages, totalPages } = useDestinationPages({
+    destinationModel: watchCurrentDestinationModel ?? null,
+    page: activeDestinationPage ?? 1,
+  });
+
+  React.useEffect(() => {
+    // console.log('model changed, resetting destination pages');
+
+    // When model changes: reset everything
+    if (watchCurrentDestinationModel !== undefined) {
+      // Reset only if not already at initial values
+      if (activeDestinationPage !== 1) setActiveDestinationPage(1);
+      if (activeDestinationPageOptions.length !== 0) setActiveDestinationPageOptions([]);
+    }
+  }, [watchCurrentDestinationModel]);
+
+  React.useEffect(() => {
+    if (!destinationPages) return;
+    // console.log('fetching destination pages', destinationPages, activeDestinationPage);
+
+    setActiveDestinationPageOptions((prev) => {
+      // If the new value is the same as the previous, do not update
+      if (
+        activeDestinationPage === 1 &&
+        JSON.stringify(prev) === JSON.stringify(destinationPages)
+      ) {
+        return prev;
+      }
+      if (activeDestinationPage === 1) {
+        return destinationPages;
+      }
+      const merged = [...prev, ...destinationPages];
+      if (JSON.stringify(prev) === JSON.stringify(merged)) {
+        return prev;
+      }
+      return merged;
+    });
+  }, [destinationPages, activeDestinationPage]);
 
   React.useEffect(() => {
     const adType = getCurrentAdType();
@@ -118,7 +346,7 @@ const CampaignForm = ({
   }, [adTypeWatch]);
 
   const getCurrentAdType = () => {
-    return adTypes.find((type) => type.ad_type_id === adTypeWatch) || null;
+    return adTypes.find((type) => type.id === adTypeWatch) || null;
   };
 
   // Checkbox change handler for ad selection
@@ -133,13 +361,6 @@ const CampaignForm = ({
       methods.setValue(`ads.${idx}.selected`, checked);
     });
   };
-
-  /**
-   * =============================================
-   * HELPER FUNCTIONS
-   * All helper functions used for ad preview and form logic.
-   * =============================================
-   */
 
   const getSelectedAds = (ads) => ads.filter((ad) => ad.selected);
   const StopToggle = ({ children }) => (
@@ -156,6 +377,7 @@ const CampaignForm = ({
       {children}
     </Box>
   );
+
   const getCurrentAdTitle = (idx, ads) => {
     const ad = ads[idx] || {};
     return ad.name || 'Ad Title Preview';
@@ -163,7 +385,7 @@ const CampaignForm = ({
 
   const getCurrentAdDescription = (idx, ads) => {
     const ad = ads[idx] || {};
-    return ad.description || 'Ad description preview';
+    return ad.ad_description || 'Ad description preview';
   };
 
   const adTypeCardImages = {
@@ -173,60 +395,139 @@ const CampaignForm = ({
     'listing-banner': listingBanner,
   };
 
-  const PopoverItem = styled(Flex)`
-    padding: 8px 16px;
-    gap: 6px;
-    align-items: center;
-    cursor: pointer;
-    border-radius: 4px;
-    transition: background 0.2s ease;
+  const handleUnpublish = () => {
+    updateCampaignStatus({
+      campaignId: campaign?.id,
+      status: 'inactive',
+      onComplete: () => setIsOpenUnpublishCampaignModal(false),
+    });
+  };
 
-    &:hover {
-      background: ${({ theme }) => theme.colors.neutral100};
-    }
-  `;
+  const handleArchive = () => {
+    updateCampaignStatus({
+      campaignId: campaign.id,
+      status: 'archived',
+      onComplete: () => setIsOpenArchiveCampaignModal(false),
+    });
+  };
 
-  const TabButton = styled(Tab)`
-    padding: 0; /* remove Tab's default padding */
-    border: none;
-    background: #eeeeee;
+  const handleUnpublishAd = (adId) => {
+    updateAdStatus({
+      adId: adId,
+      status: 'inactive',
+      // onComplete: () => setIsOpenUnpublishAdModal(false),
+    });
+  };
 
-    > div {
-      padding: 0 !important;
-      background: transparent !important;
-    }
+  const formatDate = (dateObj) => {
+    if (!dateObj || !isValid(dateObj)) return null;
+    return format(new Date(dateObj), 'yyyy-MM-dd');
+  };
 
-    &[aria-selected='true'] {
-      /* styles for active tab */
-      button {
-        background: #4945ff !important; /* active bg */
-        color: #ffffff !important; /* white text */
+  // console.log('hook form', methods.watch());
+  // console.log('rendering campaign form');
+  const handleCampaignSubmit = async (type) => {
+    // type: 'publish' | 'save'
+    try {
+      const data = methods.getValues();
+      console.log('Form Data:', data);
+
+      const result = await resolver(data, {}, {});
+      console.log('Resolver Result:', result);
+      if (result.errors && Object.keys(result.errors).length > 0) {
+        Object.entries(result.errors).forEach(([key, value]) => {
+          if (key === 'ads') return;
+          if (value?.message) {
+            methods.setError(key, {
+              type: 'manual',
+              message: value.message,
+            });
+          }
+        });
+
+        if (Array.isArray(result.errors.ads)) {
+          result.errors.ads.forEach((adErrorObj, index) => {
+            Object.entries(adErrorObj).forEach(([field, errorInfo]) => {
+              const fieldPath = `ads.${index}.${field}`;
+
+              methods.setError(fieldPath, {
+                type: 'manual',
+                message: errorInfo.message,
+              });
+            });
+          });
+        }
+        return;
       }
 
-      /* ensure ALL text + icon parts become white */
-      svg,
-      svg path,
-      span,
-      p,
-      div {
-        color: #ffffff !important;
-        fill: #ffffff !important;
-      }
-    }
+      const adImages = (data.ads || []).map((ad) => (ad.ad_image ? ad.ad_image : null));
 
-    &[aria-disabled='true'] {
-      cursor: not-allowed;
-      opacity: 0.6;
+      const formattedAds = data.ads.map((ad) => {
+        const formatted = {
+          ...ad,
+          ad_start_date: formatDate(ad.ad_start_date),
+          ad_end_date: formatDate(ad.ad_end_date),
+        };
+
+        // If ad is external, remove destination fields
+        if (ad.is_external === 'yes') {
+          delete formatted.ad_destination_page;
+          delete formatted.ad_destination_models;
+        }
+
+        return formatted;
+      });
+
+      const payload = {
+        ...data,
+        ads: formattedAds,
+      };
+
+      const formData = new FormData();
+      formData.append('data', JSON.stringify(payload));
+      adImages.forEach((img, idx) => {
+        if (img) {
+          formData.append(`files[ads][${idx}][ad_image]`, img);
+        }
+      });
+
+      const response = await axios.post(`/${pluginId}/campaign`, formData, {
+        headers: {
+          Authorization: `Bearer ${token}`,
+          'Content-Type': 'multipart/form-data',
+        },
+      });
+
+      console.log('Success:', response);
+      history.push(`/plugins/${pluginId}/campaigns`);
+      toast.success('Campaign Successfully Created!', {
+        icon: <CheckCircle color="success500" />,
+        position: 'top-center',
+        style: {
+          background: '#eafbe7',
+        },
+      });
+    } catch (error) {
+      console.error('Error creating campaign:', error);
     }
-  `;
+  };
 
   return (
     <FormProvider {...methods}>
-      {/* <AdDurationOverlapModal isOpen={true} setIsOpen={() => {}} onSubmit={() => {}} /> */}
+      {openAdDurationOverlapModal && (
+        <AdDurationOverlapModal
+          isOpen={openAdDurationOverlapModal}
+          data={AdDurationOverlapData}
+          setIsOpen={setOpenAdDurationOverlapModal}
+          onSubmit={() => {
+            handleCampaignSubmit('save');
+          }}
+        />
+      )}
       <CreateCampaignModal
         isOpen={isOpenCreateCampaignModal}
         setIsOpen={setIsOpenCreateCampaignModal}
-        onSubmit={() => {}}
+        onSubmit={() => handleCampaignSubmit('publish')}
         adsCount={getSelectedAds(formAds).length}
       />
       <EditCampaignModal
@@ -238,19 +539,17 @@ const CampaignForm = ({
       <ConfirmArchiveModal
         isOpen={isOpenArchiveCampaignModal}
         setIsOpen={setIsOpenArchiveCampaignModal}
-        onSubmit={() => {}}
+        onSubmit={handleArchive}
       />
       <ConfirmUnpublishModal
         isOpen={isOpenUnpublishCampaignModal}
         setIsOpen={setIsOpenUnpublishCampaignModal}
-        onSubmit={() => {}}
+        onSubmit={handleUnpublish}
       />
       {(mode === 'edit' || mode === 'view') && <BackButton />}
       <form
         className="py-16"
-        // onSubmit={methods.handleSubmit(handlePublish, (errors) => {
-        //   console.log("Zod validation errors:", errors);
-        // })}
+        // onSubmit={methods.handleSubmit(handleCampaignSubmit)}
       >
         {/*
          =============================================
@@ -264,13 +563,12 @@ const CampaignForm = ({
             <Flex direction="column" alignItems="flex-start">
               <Flex gap={2}>
                 <p className="text-xs text-[#62627B] font-normal">
-                  {format(new Date('2025-12-01'), 'MM/dd/yy')} -{' '}
-                  {format(new Date('2024-12-31'), 'MM/dd/yy')}
+                  {format(new Date(campaign?.min_date ?? '2025-12-01'), 'MM/dd/yy')} -{' '}
+                  {format(new Date(campaign?.max_date ?? '2024-12-31'), 'MM/dd/yy')}
                 </p>
-                {/* <CustomBadge variant={feature.status}>{feature.status}</CustomBadge> */}
-                <CustomBadge variant="live">Live</CustomBadge>
+                <StatusBadge status={campaign?.campaign_status ?? 'draft'} />
               </Flex>
-              <Typography variant="alpha">Tourism Q1</Typography>
+              <Typography variant="alpha">{methods.getValues('campaign_name')}</Typography>
               <Breadcrumb>
                 <BreadcrumbList>
                   <BreadcrumbItem>
@@ -282,7 +580,7 @@ const CampaignForm = ({
                   </BreadcrumbItem>
                   <BreadcrumbSeparator />
                   <BreadcrumbItem>
-                    <BreadcrumbLink>Tourism Q1</BreadcrumbLink>
+                    <BreadcrumbLink>{methods.getValues('campaign_name')}</BreadcrumbLink>
                   </BreadcrumbItem>
                 </BreadcrumbList>
               </Breadcrumb>
@@ -335,20 +633,14 @@ const CampaignForm = ({
             {mode === 'edit' && (
               <CustomButton
                 disabled={mode === 'view'}
-                onClick={() => history.push('campaign-report')}
+                onClick={() => history.push(`/plugins/${pluginId}/campaigns/report/${campaignId}`)}
               >
                 <Analytics stroke="#32324d" />
                 View Report
               </CustomButton>
             )}
             {mode !== 'view' && (
-              <CustomButton
-                disabled={mode === 'view'}
-                onClick={() => {
-                  // Redirect using useHistory from react-router-dom
-                  history.push('/your-target-page');
-                }}
-              >
+              <CustomButton onClick={() => handleCampaignSubmit('save')} disabled={mode === 'view'}>
                 <Save stroke="#32324d" />
                 Save
               </CustomButton>
@@ -356,7 +648,6 @@ const CampaignForm = ({
             {mode === 'create' && (
               <Button
                 startIcon={<Rocket />}
-                // type="submit"
                 onClick={() => setIsOpenCreateCampaignModal(true)}
                 variant="default"
                 size="L"
@@ -415,10 +706,10 @@ const CampaignForm = ({
             >
               <Typography variant="beta">Campaign Details</Typography>
               <FormInput
-                name="campaignName"
+                name="campaign_name"
                 label="Campaign Name*"
                 placeholder="Enter campaign name"
-                error={errors.campaignName?.message}
+                error={errors.campaign_name?.message}
                 disabled={mode === 'view'}
               />
               <Flex alignItems="flex-start" direction="column" gap={3}>
@@ -426,25 +717,25 @@ const CampaignForm = ({
                   Company registered as
                 </Typography>
                 <Controller
-                  name="companyRegisteredAs"
+                  name="campaign_entity_type"
                   control={methods.control}
-                  defaultValue="basic"
+                  defaultValue="adgm_entity"
                   render={({ field }) => (
                     <Flex gap={5}>
                       <Radio
                         name={field.name}
-                        value="adgm"
-                        checked={field.value === 'adgm'}
-                        onChange={() => field.onChange('adgm')}
+                        value="adgm_entity"
+                        checked={field.value === 'adgm_entity'}
+                        onChange={() => field.onChange('adgm_entity')}
                         disabled={mode === 'view'}
                       >
                         ADGM Entity
                       </Radio>
                       <Radio
                         name={field.name}
-                        value="external"
-                        checked={field.value === 'external'}
-                        onChange={() => field.onChange('external')}
+                        value="external_entity"
+                        checked={field.value === 'external_entity'}
+                        onChange={() => field.onChange('external_entity')}
                         disabled={mode === 'view'}
                       >
                         External Entity
@@ -455,16 +746,16 @@ const CampaignForm = ({
               </Flex>
 
               <FormInput
-                name="entityName"
+                name="campaign_entity_name"
                 placeholder="Enter entity name"
-                error={errors.entityName?.message}
+                error={errors.campaign_entity_name?.message}
                 disabled={mode === 'view'}
               />
-              {methods.watch('companyRegisteredAs') === 'adgm' && (
+              {methods.watch('campaign_entity_type') === 'adgm_entity' && (
                 <FormInput
-                  name="licence"
-                  placeholder="Enter licence"
-                  error={errors.licence?.message}
+                  name="campaign_entity_license_number"
+                  placeholder="Enter license number"
+                  error={errors.campaign_entity_license_number?.message}
                   disabled={mode === 'view'}
                 />
               )}
@@ -549,7 +840,7 @@ const CampaignForm = ({
                                   onClick={(e) => {
                                     e.stopPropagation();
                                     e.preventDefault();
-                                    console.log('unpublish');
+                                    handleUnpublishAd(ad.id);
                                   }}
                                 >
                                   <Pause stroke="#32324d" />
@@ -596,12 +887,13 @@ const CampaignForm = ({
                               <Flex direction="column" alignItems="flexStart" gap={2}>
                                 <Flex gap={2} alignItems="center">
                                   <Typography>{`Ad ${idx + 1}`}</Typography>
-                                  {mode === 'edit' && (
-                                    <CustomBadge variant="live">Live</CustomBadge>
-                                  )}
-                                  {mode === 'create' && (
-                                    <CustomBadge variant="draft">Draft</CustomBadge>
-                                  )}
+                                  <StatusBadge
+                                    status={
+                                      campaign?.campaign_status === 'draft'
+                                        ? 'draft'
+                                        : ad?.ad_status
+                                    }
+                                  />
                                 </Flex>
 
                                 <Typography>{formAds[idx]?.name || 'Ad Title Preview'}</Typography>
@@ -613,27 +905,27 @@ const CampaignForm = ({
                         <AccordionContent padding="24px">
                           <div className="flex flex-col gap-5 mt-4 p-8">
                             <FormInput
-                              name={`ads.${idx}.name`}
+                              name={`ads.${idx}.ad_name`}
                               label={`Ad ${idx + 1} Name`}
                               placeholder={`Enter ad name for Ad ${idx + 1}`}
-                              error={errors.ads?.[idx]?.message}
+                              error={errors.ads?.[idx]?.ad_name?.message}
                               disabled={mode === 'view'}
                             />
                             <div className="flex gap-1 flex-col">
                               <div className="flex gap-5 w-full">
                                 <div className="flex flex-col flex-[1_1_0%] min-w-0">
                                   <FormDatePicker
-                                    name={`ads.${idx}.startDate`}
+                                    name={`ads.${idx}.ad_start_date`}
                                     label="Start Date"
-                                    error={errors.ads?.[idx]?.message}
+                                    error={errors.ads?.[idx]?.ad_start_date?.message}
                                     disabled={mode === 'view'}
                                   />
                                 </div>
                                 <div className="flex flex-col flex-[1_1_0%] min-w-0">
                                   <FormDatePicker
-                                    name={`ads.${idx}.endDate`}
+                                    name={`ads.${idx}.ad_end_date`}
                                     label="End Date"
-                                    error={errors.ads?.[idx]?.message}
+                                    error={errors.ads?.[idx]?.ad_end_date?.message}
                                     disabled={mode === 'view'}
                                   />
                                 </div>
@@ -643,78 +935,90 @@ const CampaignForm = ({
                                 admin team approval
                               </Typography>
                             </div>
-                            <Controller
-                              name={`ads.${idx}.adType`}
-                              control={methods.control}
-                              render={({ field }) => (
-                                <Flex gap={2} style={{ height: '184px' }}>
-                                  {adTypes.map((adType) => (
-                                    <Flex
-                                      key={adType.ad_type_id}
-                                      style={{
-                                        width: '100%',
-                                        backgroundColor: '#F9F9F9',
-                                        borderRadius: '4px',
-                                        height: '184px',
-                                        padding: '14px',
-                                        cursor: 'pointer',
-                                        border:
-                                          field.value === adType.ad_type_id
-                                            ? '2px solid #666687'
-                                            : '2px solid transparent',
-                                      }}
-                                      direction="column"
-                                      justifyContent="space-between"
-                                      alignItems="start"
-                                      onClick={() => field.onChange(adType.ad_type_id)}
-                                      tabIndex={0}
-                                      onKeyDown={(e) => {
-                                        if (e.key === 'Enter' || e.key === ' ')
-                                          field.onChange(adType.ad_type_id);
-                                      }}
-                                      aria-pressed={field.value === adType.ad_type_id}
-                                    >
+                            <Box>
+                              <Controller
+                                name={`ads.${idx}.ad_type`}
+                                control={methods.control}
+                                render={({ field }) => (
+                                  <Flex gap={2} style={{ height: '184px' }}>
+                                    {adTypes.map((adType) => (
                                       <Flex
+                                        key={adType.id}
+                                        style={{
+                                          width: '100%',
+                                          backgroundColor: '#F9F9F9',
+                                          borderRadius: '4px',
+                                          height: '184px',
+                                          padding: '14px',
+                                          cursor: 'pointer',
+                                          border:
+                                            field.value === adType.id
+                                              ? '2px solid #666687'
+                                              : '2px solid transparent',
+                                        }}
+                                        direction="column"
                                         justifyContent="space-between"
                                         alignItems="start"
-                                        style={{ width: '100%' }}
+                                        onClick={() => field.onChange(adType.id)}
+                                        tabIndex={0}
+                                        onKeyDown={(e) => {
+                                          if (e.key === 'Enter' || e.key === ' ')
+                                            field.onChange(adType.id);
+                                        }}
+                                        aria-pressed={field.value === adType.id}
                                       >
-                                        <img
-                                          style={{ width: '29px' }}
-                                          src={adTypeCardImages[adType.ad_type_id] || ''}
-                                          alt={adType.title}
-                                        />
-                                        <Radio
-                                          name={field.name}
-                                          value={adType.ad_type_id}
-                                          checked={field.value === adType.ad_type_id}
-                                          onChange={() => field.onChange(adType.ad_type_id)}
-                                          tabIndex={-1} // prevent double focus
-                                          disabled={mode === 'view'}
-                                        />
-                                      </Flex>
-                                      <Flex direction="column" alignItems="start" gap="2">
-                                        <Typography style={{ fontSize: '12px' }} variant="beta">
-                                          {adType.title}
-                                        </Typography>
-                                        <Typography
-                                          style={{ fontSize: '10px' }}
-                                          textColor="neutral600"
-                                          variant="epsilon"
+                                        <Flex
+                                          justifyContent="space-between"
+                                          alignItems="start"
+                                          style={{ width: '100%' }}
                                         >
-                                          {adType.description}
-                                        </Typography>
+                                          <img
+                                            style={{ width: '29px' }}
+                                            src={adTypeCardImages[adType.ad_type_id] || ''}
+                                            alt={adType.title}
+                                          />
+                                          <Radio
+                                            name={field.name}
+                                            value={adType.id}
+                                            checked={field.value === adType.id}
+                                            onChange={() => field.onChange(adType.id)}
+                                            tabIndex={-1} // prevent double focus
+                                            disabled={mode === 'view'}
+                                          />
+                                        </Flex>
+                                        <Flex direction="column" alignItems="start" gap="2">
+                                          <Typography style={{ fontSize: '12px' }} variant="beta">
+                                            {adType.title}
+                                          </Typography>
+                                          <Typography
+                                            style={{ fontSize: '10px' }}
+                                            textColor="neutral600"
+                                            variant="epsilon"
+                                          >
+                                            {adType.description}
+                                          </Typography>
+                                        </Flex>
                                       </Flex>
-                                    </Flex>
-                                  ))}
-                                </Flex>
+                                    ))}
+                                  </Flex>
+                                )}
+                              />
+
+                              {methods.formState.errors?.ads?.[idx]?.ad_type?.message && (
+                                <Typography
+                                  variant="pi"
+                                  textColor="danger600"
+                                  style={{ marginTop: '8px', fontSize: '12px' }}
+                                >
+                                  {methods.formState.errors.ads[idx].ad_type.message}
+                                </Typography>
                               )}
-                            />
+                            </Box>
 
                             {activeAdType && (
-                              <Box style={{ width: '100%' }} key={activeAdType.ad_type_id}>
+                              <Box style={{ width: '100%' }} key={activeAdType.id}>
                                 <Controller
-                                  name={`ads.${idx}.adSpot`}
+                                  name={`ads.${idx}.ad_spot`}
                                   control={methods.control}
                                   render={({ field }) => (
                                     <Flex alignItems="start" direction="column" gap={2}>
@@ -725,24 +1029,52 @@ const CampaignForm = ({
                                         >
                                           <Radio
                                             name={field.name}
-                                            value={adSpot.ad_spot_id}
-                                            checked={field.value === adSpot.ad_spot_id}
-                                            onChange={() => field.onChange(adSpot.ad_spot_id)}
+                                            value={adSpot.id}
+                                            checked={field.value === adSpot.id}
+                                            onChange={() => field.onChange(adSpot.id)}
                                           >
                                             {adSpot.ad_spot_display_text}
                                           </Radio>
-                                          {methods.watch(`ads.${idx}.adSpot`) ===
-                                            adSpot.ad_spot_id &&
+                                          {methods.watch(`ads.${idx}.ad_spot`) === adSpot.id &&
                                             adSpot.ad_screens.length > 0 && (
-                                              <Flex gap={4}>
-                                                {adSpot.ad_screens.map((screen) => (
-                                                  <FormCheckbox
-                                                    name={`ads.${idx}.screens`}
-                                                    value={screen.ad_screen_id}
-                                                    label={screen.ad_screen_title}
-                                                  />
-                                                ))}
-                                              </Flex>
+                                              <Controller
+                                                name={`ads.${idx}.ad_screens`}
+                                                control={methods.control}
+                                                defaultValue={[]} // Ensures the value is always an array
+                                                render={({ field }) => (
+                                                  <Flex gap={4}>
+                                                    {adSpot.ad_screens.map((screen) => (
+                                                      <Checkbox
+                                                        key={screen.id}
+                                                        value={screen.id}
+                                                        checked={
+                                                          Array.isArray(field.value) &&
+                                                          field.value.includes(screen.id)
+                                                        }
+                                                        onChange={(e) => {
+                                                          const checked = e.target.checked;
+                                                          const value = screen.id;
+                                                          let newValue = Array.isArray(field.value)
+                                                            ? [...field.value]
+                                                            : [];
+                                                          if (checked) {
+                                                            if (!newValue.includes(value))
+                                                              newValue.push(value);
+                                                          } else {
+                                                            newValue = newValue.filter(
+                                                              (v) => v !== value
+                                                            );
+                                                          }
+                                                          field.onChange(newValue);
+                                                        }}
+                                                        disabled={mode === 'view'}
+                                                      >
+                                                        {screen.ad_screen_title}
+                                                      </Checkbox>
+                                                    ))}
+                                                  </Flex>
+                                                )}
+                                              />
                                             )}
                                         </Flex>
                                       ))}
@@ -753,28 +1085,142 @@ const CampaignForm = ({
                             )}
 
                             <FormInput
-                              name={`ads.${idx}.headline`}
+                              name={`ads.${idx}.ad_headline`}
                               label={`Headline*`}
                               placeholder={`Enter headline`}
                               maxLength={60}
-                              error={errors.ads?.[idx]?.message}
+                              error={errors.ads?.[idx]?.ad_headline?.message}
                               disabled={mode === 'view'}
                             />
-                            <FormInput
-                              name={`ads.${idx}.destinationUrl`}
-                              label={`Destination URL*`}
-                              placeholder={`https://example.com`}
-                              type="url"
-                              maxLength={2048}
-                              error={errors.ads?.[idx]?.message}
-                              disabled={mode === 'view'}
+
+                            <Controller
+                              name={`ads.${idx}.is_external`}
+                              control={methods.control}
+                              // defaultValue={true}
+                              render={({ field }) => (
+                                <Flex gap={5}>
+                                  <Radio
+                                    name={field.name}
+                                    value="yes"
+                                    checked={field.value === 'yes'}
+                                    onChange={() => field.onChange('yes')}
+                                    disabled={mode === 'view'}
+                                  >
+                                    External
+                                  </Radio>
+                                  <Radio
+                                    name={field.name}
+                                    value="no"
+                                    checked={field.value === 'no'}
+                                    onChange={() => field.onChange('no')}
+                                    disabled={mode === 'view'}
+                                  >
+                                    Internal (In-app route)
+                                  </Radio>
+                                </Flex>
+                              )}
                             />
+                            {methods.watch(`ads.${idx}.is_external`) === 'yes' && (
+                              <FormInput
+                                name={`ads.${idx}.ad_external_url`}
+                                // label={`Destination URL*`}
+                                placeholder="Enter Destination URL"
+                                style={{ margin: 0 }}
+                                type="url"
+                                maxLength={2048}
+                                error={errors.ads?.[idx]?.ad_external_url?.message}
+                                disabled={mode === 'view'}
+                                className="m-0"
+                              />
+                            )}
+                            {methods.watch(`ads.${idx}.is_external`) === 'no' && (
+                              <Box>
+                                <Box marginBottom={3}>
+                                  <Controller
+                                    name={`ads.${idx}.ad_destination_models`}
+                                    control={methods.control}
+                                    defaultValue=""
+                                    render={({ field }) => (
+                                      <SingleSelect
+                                        value={field.value ?? ''}
+                                        onChange={field.onChange}
+                                        disabled={mode === 'view'}
+                                        placeholder="Select Destination Model"
+                                      >
+                                        {DESTINATION_MODEL_OPTIONS.map((option) => (
+                                          <SingleSelectOption
+                                            key={option?.value}
+                                            value={option?.value}
+                                          >
+                                            {option?.label}
+                                          </SingleSelectOption>
+                                        ))}
+                                      </SingleSelect>
+                                    )}
+                                  />
+                                </Box>
+                                <Controller
+                                  name={`ads.${idx}.ad_destination_page`}
+                                  control={methods.control}
+                                  defaultValue=""
+                                  render={({ field }) => {
+                                    let options = [];
+                                    if (mode === 'view') {
+                                      // Only show default option in view mode
+                                      options = activeDestinationPageOptionsDefault.length
+                                        ? activeDestinationPageOptionsDefault
+                                        : [];
+                                    } else if (
+                                      mode === 'edit' &&
+                                      activeDestinationPageOptionsDefault.length > 0 &&
+                                      activeDestinationPageOptions.length === 0
+                                    ) {
+                                      // In edit mode, show default if present and no fetched options
+                                      options = activeDestinationPageOptionsDefault;
+                                    } else {
+                                      // In create or edit (after model change), show fetched options
+                                      options =
+                                        activeDestinationPageOptions.length > 0
+                                          ? activeDestinationPageOptions
+                                          : [];
+                                    }
+
+                                    return (
+                                      <SingleSelect
+                                        value={field.value ?? ''}
+                                        onChange={(value) => field.onChange(value)}
+                                        disabled={mode === 'view' || options.length === 0}
+                                        placeholder="Select Destination Page"
+                                      >
+                                        {options.map((option) => (
+                                          <SingleSelectOption key={option?.id} value={option?.id}>
+                                            {option?.name}
+                                          </SingleSelectOption>
+                                        ))}
+                                        {mode !== 'view' && activeDestinationPage < totalPages && (
+                                          <Button
+                                            style={{ width: '100%' }}
+                                            variant="tertiary"
+                                            onClick={() =>
+                                              setActiveDestinationPage((prev) => prev + 1)
+                                            }
+                                          >
+                                            Load More
+                                          </Button>
+                                        )}
+                                      </SingleSelect>
+                                    );
+                                  }}
+                                />
+                              </Box>
+                            )}
+
                             <FormTextArea
-                              name={`ads.${idx}.description`}
+                              name={`ads.${idx}.ad_description`}
                               label="Description*"
                               maxLength={150}
                               placeholder="Enter ad description"
-                              error={errors.ads?.[idx]?.message}
+                              error={errors.ads?.[idx]?.ad_description?.message}
                               disabled={mode === 'view'}
                             />
                             <TabGroup>
@@ -805,13 +1251,14 @@ const CampaignForm = ({
                               <TabPanels>
                                 <TabPanel>
                                   <FileUpload
-                                    name={`ads.${idx}.files`}
+                                    name={`ads.${idx}.ad_image`}
+                                    adImageUrl={`ads.${idx}.ad_image_url`}
                                     disabled={mode === 'view'}
                                   />
                                 </TabPanel>
                                 <TabPanel>
                                   <FormInput
-                                    name={`ads.${idx}.videoUrl`}
+                                    name={`ads.${idx}.ad_video_url`}
                                     label={`Vimeo Link*`}
                                     placeholder={`https://example.com`}
                                     type="url"
@@ -891,9 +1338,9 @@ const CampaignForm = ({
                     </div>
                     <img
                       src={
-                        methods.getValues(`ads.${activeAdIdx}.files`)?.[0]
-                          ? URL.createObjectURL(methods.getValues(`ads.${activeAdIdx}.files`)?.[0])
-                          : emptyImage
+                        methods.getValues(`ads.${activeAdIdx}.ad_image`)
+                          ? URL.createObjectURL(methods.getValues(`ads.${activeAdIdx}.ad_image`))
+                          : (methods.getValues(`ads.${activeAdIdx}.ad_image_url`) ?? emptyImage)
                       }
                       alt=""
                       className="absolute inset-0 size-full object-cover object-center -z-10 rounded-3xl "

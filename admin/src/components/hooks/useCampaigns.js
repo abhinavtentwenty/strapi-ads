@@ -1,6 +1,8 @@
 import { useFetchClient } from '@strapi/helper-plugin';
 import useSWR from 'swr';
 import pluginId from '../../pluginId';
+import qs from 'qs';
+import getTimeframeDate from '../../utils/getTimeframeDate';
 
 const useCampaigns = ({
   page = 1,
@@ -12,22 +14,39 @@ const useCampaigns = ({
   paginated = true,
 }) => {
   const { get } = useFetchClient();
+  const cleanStatus = status?.filter(Boolean);
 
-  const params = [
-    paginated ? `pagination[page]=${page}` : '',
-    paginated ? `pagination[pageSize]=${pageSize}` : '',
-    `populate[campaign_status]=true`,
-    status ? `filters[status]=${status}` : '',
-    type ? `filters[type]=${type}` : '',
-    time ? `filters[time]=${time}` : '',
-    search ? `filters[search]=${encodeURIComponent(search)}` : '',
-  ]
-    .filter(Boolean)
-    .join('&');
+  const timeframeDate = getTimeframeDate(time);
+
+  const query = qs.stringify(
+    {
+      pagination: paginated ? { page, pageSize } : undefined,
+      filters: {
+        ...(type !== '' && { ads: { ad_type: type } }),
+        ...(cleanStatus?.length > 0 && { campaign_status: cleanStatus }),
+        ...(search && { campaign_name: { $containsi: search } }),
+        ...(timeframeDate && {
+          createdAt: { $gte: timeframeDate.toISOString() },
+        }),
+      },
+      populate: {
+        campaign_status: true,
+        ads: {
+          populate: {
+            ad_spot: { populate: '*' },
+            ad_type: { populate: '*' },
+            ad_screens: { populate: '*' },
+            ad_image: { populate: '*' },
+          },
+        },
+      },
+    },
+    { encodeValuesOnly: true }
+  );
 
   const { data, error, isLoading, mutate } = useSWR(
     ['campaigns', paginated, page, pageSize, status, type, time, search],
-    () => get(`/${pluginId}/get-campaigns?${params}`)
+    () => get(`/${pluginId}/get-campaigns?${query}`)
   );
 
   return {

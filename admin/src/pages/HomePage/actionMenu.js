@@ -19,24 +19,19 @@ import { CheckCircle } from '@strapi/icons';
 
 import { Popover, PopoverContent, PopoverTrigger } from '../../components/ui/popover';
 import PopoverItemButton from '../../components/elements/popoverItemButton';
-
+import useUnpublishOrArchiveCampaign from '../../components/hooks/useUnpublisOrArchiveCampaign';
 const ActionMenu = ({ data }) => {
   const history = useHistory();
   const [isOpenArchiveCampaignModal, setIsOpenArchiveCampaignModal] = React.useState(false);
   const [isOpenUnpublishCampaignModal, setIsOpenUnpublishCampaignModal] = React.useState(false);
   const [openPopover, setOpenPopover] = React.useState(false);
-  const { get } = useFetchClient();
-
-  const { trigger: duplicateCampaign, isMutating } = useSWRMutation(
-    ['duplicateCampaign', data.id],
-    async () => {
-      return get(`/${pluginId}/get-campaigns/duplicate/${data.id}`);
-    }
-  );
+  const { get, put } = useFetchClient();
+  const { updateCampaignStatus } = useUnpublishOrArchiveCampaign();
 
   const handleDuplicate = async () => {
     try {
-      await duplicateCampaign();
+      await get(`/${pluginId}/get-campaigns/duplicate/${data.id}`);
+
       mutate(['campaigns']);
       toast.success('Campaign Successfully Duplicated!', {
         icon: <CheckCircle color="success500" />,
@@ -55,6 +50,22 @@ const ActionMenu = ({ data }) => {
         },
       });
     }
+  };
+
+  const handleUnpublish = () => {
+    updateCampaignStatus({
+      campaignId: data.id,
+      status: 'inactive',
+      onComplete: () => setOpenPopover(false),
+    });
+  };
+
+  const handleArchive = () => {
+    updateCampaignStatus({
+      campaignId: data.id,
+      status: 'archived',
+      onComplete: () => setOpenPopover(false),
+    });
   };
 
   return (
@@ -86,15 +97,15 @@ const ActionMenu = ({ data }) => {
               <Typography> Edit Campaign</Typography>
               <Edit />
             </PopoverItemButton>
-            <PopoverItemButton onClick={handleDuplicate} disabled={isMutating}>
+            <PopoverItemButton onClick={handleDuplicate}>
               <Typography> Duplicate</Typography>
               <Duplicate />
             </PopoverItemButton>
-            <PopoverItemButton onClick={() => setIsOpenUnpublishCampaignModal(true)}>
+            <PopoverItemButton onClick={handleUnpublish}>
               <Typography>Unpublished</Typography>
               <Pause />
             </PopoverItemButton>
-            <PopoverItemButton onClick={() => setIsOpenArchiveCampaignModal(true)}>
+            <PopoverItemButton onClick={handleArchive}>
               <Typography>Archive</Typography>
               <Archive />
             </PopoverItemButton>

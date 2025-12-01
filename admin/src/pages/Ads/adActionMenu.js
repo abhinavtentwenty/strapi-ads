@@ -18,26 +18,21 @@ import { mutate } from 'swr';
 import { toast } from 'sonner';
 import { CheckCircle } from '@strapi/icons';
 import pluginId from '../../pluginId';
+import useUnpublishOrArchiveAd from '../../components/hooks/useUnpublisOrArchiveAd';
 const AdActionMenu = ({ data }) => {
   const history = useHistory();
 
   const [isOpenArchiveAdModal, setIsOpenArchiveAdModal] = React.useState(false);
   const [isOpenUnpublishAdModal, setIsOpenUnpublishAdModal] = React.useState(false);
-
-  // TODO: Handle this Duplicate afterwards
+  const [openPopover, setOpenPopover] = React.useState(false);
 
   const { get } = useFetchClient();
-
-  const { trigger: duplicateCampaign, isMutating } = useSWRMutation(
-    ['duplicateCampaign', data.id],
-    async () => {
-      return get(`/${pluginId}/get-ad/duplicate/${data.id}`);
-    }
-  );
+  const { updateAdStatus } = useUnpublishOrArchiveAd();
 
   const handleDuplicate = async () => {
     try {
-      await duplicateCampaign();
+      await get(`/${pluginId}/ad/duplicate/${data.id}`);
+
       mutate(['ads']);
       toast.success('Campaign Successfully Duplicated!', {
         icon: <CheckCircle color="success500" />,
@@ -57,6 +52,22 @@ const AdActionMenu = ({ data }) => {
       });
     }
   };
+  const handleUnpublish = () => {
+    updateAdStatus({
+      adId: data.id,
+      status: 'inactive',
+      onComplete: () => setIsOpenUnpublishAdModal(false),
+    });
+  };
+
+  const handleArchive = () => {
+    updateAdStatus({
+      adId: data.id,
+      status: 'archived',
+      onComplete: () => setIsOpenArchiveAdModal(false),
+    });
+  };
+
   return (
     <>
       <ConfirmArchiveModal
@@ -71,9 +82,9 @@ const AdActionMenu = ({ data }) => {
         onSubmit={() => {}}
         variant="ads"
       />
-      <Popover>
+      <Popover open={openPopover} onOpenChange={setOpenPopover}>
         <PopoverTrigger>
-          <IconButton>
+          <IconButton onClick={() => setOpenPopover((v) => !v)}>
             <More />
           </IconButton>
         </PopoverTrigger>
@@ -83,7 +94,9 @@ const AdActionMenu = ({ data }) => {
               <Typography>View Details</Typography>
               <Eye />
             </PopoverItemButton>
-            <PopoverItemButton onClick={() => history.push(`ads/edit/${data.id}`)}>
+            <PopoverItemButton
+            //  onClick={() => history.push(`ads/edit/${data.id}`)}
+            >
               <Typography> Edit </Typography>
               <Edit />
             </PopoverItemButton>
@@ -91,11 +104,11 @@ const AdActionMenu = ({ data }) => {
               <Typography> Duplicate</Typography>
               <Duplicate />
             </PopoverItemButton>
-            <PopoverItemButton onClick={() => setIsOpenUnpublishAdModal(true)}>
+            <PopoverItemButton onClick={handleUnpublish}>
               <Typography>Unpublished</Typography>
               <Pause />
             </PopoverItemButton>
-            <PopoverItemButton onClick={() => setIsOpenArchiveAdModal(true)}>
+            <PopoverItemButton onClick={handleArchive}>
               <Typography>Archive</Typography>
               <Archive />
             </PopoverItemButton>

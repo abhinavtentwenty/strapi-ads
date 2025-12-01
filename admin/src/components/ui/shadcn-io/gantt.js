@@ -49,7 +49,8 @@ import { Flex } from '@strapi/design-system';
 import Analytics from '../../Icons/Analytics';
 import ActionMenu from '../../../pages/HomePage/actionMenu';
 import CustomIconButton from '../../elements/customIconButton';
-
+import { isValid } from 'date-fns';
+import StatusBadge from '../../elements/statusBadge';
 const draggingAtom = atom(false);
 const scrollXAtom = atom(0);
 export const useGanttDragging = () => useAtom(draggingAtom);
@@ -323,13 +324,23 @@ export const GanttSidebarItem = ({ feature, onSelectItem, className, adLength })
   const history = useHistory();
 
   const gantt = useContext(GanttContext);
+  const isValidDate = (d) => d instanceof Date && isValid(d);
+
   const tempEndAt =
-    feature.endAt && isSameDay(feature.startAt, feature.endAt)
+    isValidDate(feature.endAt) &&
+    isValidDate(feature.startAt) &&
+    isSameDay(feature.startAt, feature.endAt)
       ? addDays(feature.endAt, 1)
       : feature.endAt;
-  const duration = tempEndAt
-    ? formatDistance(feature.startAt, tempEndAt)
-    : `${formatDistance(feature.startAt, new Date())} so far`;
+
+  let duration = '';
+  if (isValidDate(feature.startAt) && isValidDate(tempEndAt)) {
+    duration = formatDistance(feature.startAt, tempEndAt);
+  } else if (isValidDate(feature.startAt)) {
+    duration = `${formatDistance(feature.startAt, new Date())} so far`;
+  } else {
+    duration = 'N/A';
+  }
   const handleClick = (event) => {
     if (event.target === event.currentTarget) {
       // Scroll to the feature in the timeline
@@ -360,7 +371,8 @@ export const GanttSidebarItem = ({ feature, onSelectItem, className, adLength })
       }}
       tabIndex={0}
     >
-      <CustomBadge variant={feature.status}>{feature.status}</CustomBadge>
+      <StatusBadge status={feature.status} />
+      {/* <CustomBadge variant={feature.status}>{feature.status}</CustomBadge> */}
       <Flex className="gap-2" style={{ justifyContent: 'space-between', alignItems: 'center' }}>
         <div>
           <p

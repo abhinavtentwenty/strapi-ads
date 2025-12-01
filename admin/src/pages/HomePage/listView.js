@@ -25,54 +25,18 @@ import CustomIconButton from '../../components/elements/customIconButton';
 const TrStyles = 'text-xl text-[#62627B] uppercase font-bold';
 const TdStyles = 'text-2xl';
 import CustomBadge from '../../components/elements/badge';
-
-const DummyData = [
-  {
-    id: 1,
-    title: 'Total Campaigns',
-    currentValue: 150,
-    isPositive: true,
-    differenceValue: 2,
-  },
-  {
-    id: 2,
-    title: 'active ads',
-    currentValue: 3000,
-    isPositive: false,
-    differenceValue: 100,
-  },
-  {
-    id: 3,
-    title: 'Total Impressions',
-    currentValue: 500,
-    isPositive: true,
-    differenceValue: 50,
-  },
-  {
-    id: 4,
-    title: 'Total CLicks',
-    currentValue: 500,
-    isPositive: true,
-    differenceValue: 50,
-  },
-  {
-    id: 5,
-    title: 'CTR',
-    currentValue: 500,
-    isPositive: true,
-    differenceValue: 50,
-  },
-];
+import StatusBadge from '../../components/elements/statusBadge';
+import useAdModuleStats from '../../components/hooks/useAdModuleStats';
 
 const ListView = ({ paginatedCampaigns }) => {
   const history = useHistory();
+  const { stats } = useAdModuleStats();
+
   return (
     <>
       <div className="!p-6 ">
         <Grid marginTop={8} gap={4}>
-          {DummyData.map((data) => (
-            <DashboardCard key={data.id} data={data} />
-          ))}
+          {stats?.length > 0 && stats?.map((stat) => <DashboardCard key={stat.type} data={stat} />)}
         </Grid>
       </div>
       <Table colCount={7} rowCount={paginatedCampaigns?.length}>
@@ -150,9 +114,7 @@ const ListView = ({ paginatedCampaigns }) => {
                 <Td className={TdStyles}>12/01/25 - 13/02/25</Td>
                 {/* Campaign status */}
                 <Td className={TdStyles}>
-                  <CustomBadge variant={c?.campaign_status?.status_title}>
-                    {c?.campaign_status?.status_title}
-                  </CustomBadge>
+                  <StatusBadge status={c?.campaign_status} />
                 </Td>
                 <Td className={TdStyles}>
                   <div className="flex flex-col">
@@ -204,10 +166,10 @@ const ListView = ({ paginatedCampaigns }) => {
               <Td colSpan={7}>
                 <div
                   style={{ height: '50vh' }}
-                  className="flex flex-col items-center justify-center"
+                  className="flex flex-col gap-4 items-center justify-center"
                 >
                   {/* <EmptyDocuments className="size-40" /> */}
-                  <div className="text-gray-500 mb-4 text-lg">No content found</div>
+                  <div className="text-gray-500 text-lg">No content found</div>
                   <Button
                     variant="secondary"
                     startIcon={<Plus />}

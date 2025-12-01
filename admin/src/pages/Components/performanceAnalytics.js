@@ -3,15 +3,7 @@ import { Area, AreaChart, CartesianGrid, XAxis, YAxis } from 'recharts';
 import { ChartContainer, ChartTooltip, ChartTooltipContent } from '../../components/ui/charts';
 import React from 'react';
 import { useTheme } from '@strapi/design-system';
-
-const chartData = [
-  { date: 'Jan 1', impressions: 186, clicks: 120 },
-  { date: 'Jan 2', impressions: 305, clicks: 200 },
-  { date: 'Jan 3', impressions: 237, clicks: 150 },
-  { date: 'Jan 4', impressions: 73, clicks: 45 },
-  { date: 'Jan 5', impressions: 209, clicks: 135 },
-  { date: 'Jan 6', impressions: 214, clicks: 140 },
-];
+import { format, parseISO } from 'date-fns';
 
 const chartConfig = {
   impressions: {
@@ -24,8 +16,18 @@ const chartConfig = {
   },
 };
 
-const PerformanceAnalytics = () => {
+const formatChartData = (apiData) => {
+  if (!Array.isArray(apiData)) return [];
+  return apiData.map((item) => ({
+    date: format(parseISO(item.attributes.stat_date), 'MMM d'),
+    impressions: Number(item.attributes.impressions),
+    clicks: Number(item.attributes.clicks),
+  }));
+};
+
+const PerformanceAnalytics = ({ data }) => {
   const theme = useTheme();
+  const chartData = formatChartData(data);
   return (
     <ChartContainer className="h-[350px] w-full" config={chartConfig}>
       <AreaChart

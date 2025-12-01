@@ -1,10 +1,10 @@
 import { Flex, GridItem, Typography } from '@strapi/design-system';
 import React from 'react';
 
-const DashboardCard = ({
-  data = { title: 'Total Campaigns', currentValue: 150, isPositive: true, differenceValue: null },
-}) => {
-  const { title, currentValue, isPositive, differenceValue } = data;
+const DashboardCard = ({ data }) => {
+  const showDelta = data.delta !== 0 && Math.abs(data.delta) !== Math.abs(data.total);
+  const isPositive = data.delta > 0;
+
   return (
     <GridItem
       col={3}
@@ -16,20 +16,20 @@ const DashboardCard = ({
     >
       <Flex justifyContent="space-between" alignItems="unset">
         <Typography variant="pi" textColor="neutral500" fontWeight="bold" textTransform="uppercase">
-          {title}
+          {data.label}
         </Typography>
       </Flex>
       <Typography variant="alpha" fontWeight="bold" as="p">
-        {currentValue}
+        {data.total}
       </Typography>
-      {differenceValue && (
+      {showDelta && (
         <Typography
           variant="delta"
           fontWeight="bold"
           textColor={isPositive ? 'success500' : 'danger500'}
           textTransform="uppercase"
         >
-          {isPositive ? `+${differenceValue} since Last week` : `-${differenceValue} vs last week`}
+          {`${data.delta} ${data.text}`}
         </Typography>
       )}
     </GridItem>

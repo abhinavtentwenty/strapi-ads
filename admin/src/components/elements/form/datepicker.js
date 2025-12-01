@@ -1,14 +1,14 @@
-import React from "react";
-import { DatePicker } from "@strapi/design-system";
-import { useFormContext, Controller } from "react-hook-form";
+import React from 'react';
+import { DatePicker } from '@strapi/design-system';
+import { useFormContext, Controller } from 'react-hook-form';
 
 const FormDatePicker = ({
   name,
-  label = "Label",
+  label = 'Label',
   error,
   disabled = false,
-  locale = "en-GB",
-  size = "M",
+  locale = 'en-GB',
+  size = 'M',
 }) => {
   const { control } = useFormContext();
 
@@ -18,14 +18,15 @@ const FormDatePicker = ({
       control={control}
       render={({ field }) => (
         <DatePicker
-          {...field}
           label={label}
-          name={name}
+          // selectedDate={field.value}
+          value={field.value}
+          onChange={(date) => field.onChange(date)}
           error={error}
           locale={locale}
           size={size}
           disabled={disabled}
-          onClear={() => field.onChange(undefined)}
+          onClear={() => field.onChange(null)}
         />
       )}
     />

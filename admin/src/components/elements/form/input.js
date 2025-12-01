@@ -11,6 +11,7 @@ const FormInput = ({
   error,
   disabled = false,
   ariaLabel = 'text-input',
+  style,
   ...props
 }) => {
   const { control } = useFormContext();
@@ -28,6 +29,7 @@ const FormInput = ({
           placeholder={placeholder}
           type={type}
           error={error}
+          style={style}
           disabled={disabled}
           {...props}
         />

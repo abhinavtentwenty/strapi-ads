@@ -15,6 +15,7 @@ import CustomBadge from '../../components/elements/badge';
 
 import { useState, useEffect } from 'react';
 import { ContextMenu, ContextMenuTrigger } from '../../components/ui/context-menu';
+import StatusBadge from '../../components/elements/statusBadge';
 const capitalize = (str) => str.charAt(0).toUpperCase() + str.slice(1);
 
 const TimelineView = ({ paginatedCampaigns = [] }) => {
@@ -25,17 +26,19 @@ const TimelineView = ({ paginatedCampaigns = [] }) => {
         return {
           id: c.id,
           name: capitalize(c.campaign_name),
-          startAt: adsArray[0]?.ad_start_date ? new Date(adsArray[0].ad_start_date) : null,
-          endAt: adsArray[0]?.ad_end_date ? new Date(adsArray[0].ad_end_date) : null,
-          status: c?.campaign_status?.status_title,
+          startAt: c.min_date ? new Date(c.min_date) : null,
+          endAt: c.max_date ? new Date(c.max_date) : null,
+          status: c?.campaign_status,
           description: c.campaign_id,
           ads: adsArray.map((ad) => ({
             id: ad.id,
-            name: capitalize(ad.ad_headline),
+            name: capitalize(ad.ad_name),
             startAt: ad.ad_start_date ? new Date(ad.ad_start_date) : null,
             endAt: ad.ad_end_date ? new Date(ad.ad_end_date) : null,
-            img: ad.ad_image?.[0]?.url,
-            status: ad?.ad_status?.status_title,
+            img: ad.ad_image?.url ?? '',
+            adType: ad?.ad_type?.title ?? null,
+            adSpot: ad?.ad_spot?.ad_spot_title ?? null,
+            status: ad?.ad_status,
             description: ad.ad_description,
           })),
         };
@@ -114,12 +117,22 @@ const TimelineView = ({ paginatedCampaigns = [] }) => {
                         <div className="flex flex-col gap-1">
                           <p className="text-sm font-normal leading-5">{feature.name}</p>
                           <div className=" flex items-center gap-1">
-                            <CustomBadge variant={feature.status}>{feature.status}</CustomBadge>
-                            <CustomBadge variant="draft">Native card</CustomBadge>
-                            <CustomBadge variant="grayOutline">Lifestyle listing</CustomBadge>
+                            <StatusBadge status={feature.status} />
+                            {feature.adType && (
+                              <CustomBadge variant="draft">{feature.adType}</CustomBadge>
+                            )}
+                            {feature.adSpot && (
+                              <CustomBadge variant="grayOutline">{feature.adSpot}</CustomBadge>
+                            )}
                           </div>
                           <Typography type="pi" textColor="neutral600">
-                            {feature.startAt.toDateString()} - {feature.endAt.toDateString()}
+                            {feature.startAt && !isNaN(feature.startAt)
+                              ? feature.startAt.toDateString()
+                              : ''}
+                            {' - '}
+                            {feature.endAt && !isNaN(feature.endAt)
+                              ? feature.endAt.toDateString()
+                              : ''}
                           </Typography>
                         </div>
                       </div>

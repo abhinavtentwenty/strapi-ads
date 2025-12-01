@@ -1,6 +1,6 @@
 // @ts-nocheck
-import React from 'react';
-import { useHistory } from 'react-router-dom';
+import React, { useRef } from 'react';
+import { useHistory, useParams } from 'react-router-dom';
 import styled from 'styled-components';
 import {
   Typography,
@@ -31,29 +31,15 @@ import ConfirmUnpublishModal from '../../Components/confirmUnpublishModal';
 import CustomButton from '../../../components/elements/customButton';
 import BackButton from '../../../components/elements/backButton';
 
-const DummyData = [
-  {
-    id: 3,
-    title: 'Total Impressions',
-    currentValue: 500,
-    isPositive: true,
-    differenceValue: 50,
-  },
-  {
-    id: 4,
-    title: 'Total CLicks',
-    currentValue: 500,
-    isPositive: true,
-    differenceValue: 50,
-  },
-  {
-    id: 5,
-    title: 'CTR',
-    currentValue: 500,
-    isPositive: true,
-    differenceValue: 50,
-  },
-];
+import useUnpublishOrArchiveAd from '../../../components/hooks/useUnpublisOrArchiveAd';
+import useAd from '../../../components/hooks/useAd';
+import StatusBadge from '../../../components/elements/statusBadge';
+import { AD_STATUS_OPTIONS, TIMEFRAME_OPTIONS } from '../../../utils/constants';
+import useAdType from '../../../components/hooks/useAdType';
+import emptyImage from '../../../assets/emptyImage.png';
+import useAdStats from '../../../components/hooks/useAdStats';
+import useAdGraph from '../../../components/hooks/useAdGraph';
+import useDownloadPdf from '../../../components/hooks/useDownloadPdf';
 
 const PopoverItem = styled(Flex)`
   padding: 8px 16px;
@@ -69,27 +55,52 @@ const PopoverItem = styled(Flex)`
 `;
 
 const AdReport = () => {
-  const [status, setStatus] = React.useState(['all']);
-  const [type, setType] = React.useState('all');
-  const [dateRange, setDateRange] = React.useState('last_7_days');
+  const { id } = useParams();
+  const pdfRef = useRef();
+  const downloadPdf = useDownloadPdf();
+  const { adGraph } = useAdGraph({ id });
+
+  const { adTypes } = useAdType();
+  const { stats } = useAdStats(id);
+  const [status, setStatus] = React.useState(['']);
+  const [type, setType] = React.useState('');
+  const [dateRange, setDateRange] = React.useState('');
   const [openMorePopover, setOpenMorePopover] = React.useState(false);
   const morePopoverRef = React.useRef(null);
   const [isOpenArchiveAdModal, setIsOpenArchiveAdModal] = React.useState(false);
   const [isOpenUnpublishAdModal, setIsOpenUnpublishAdModal] = React.useState(false);
   const history = useHistory();
+  const { ad } = useAd(id);
+  const { updateAdStatus } = useUnpublishOrArchiveAd();
+
+  const handleUnpublish = () => {
+    updateAdStatus({
+      adId: ad.id,
+      status: 'inactive',
+      onComplete: () => setIsOpenUnpublishAdModal(false),
+    });
+  };
+
+  const handleArchive = () => {
+    updateAdStatus({
+      adId: ad.id,
+      status: 'archived',
+      onComplete: () => setIsOpenArchiveAdModal(false),
+    });
+  };
 
   return (
     <div>
       <ConfirmArchiveModal
         isOpen={isOpenArchiveAdModal}
         setIsOpen={setIsOpenArchiveAdModal}
-        onSubmit={() => {}}
+        onSubmit={handleArchive}
         variant="ads"
       />
       <ConfirmUnpublishModal
         isOpen={isOpenUnpublishAdModal}
         setIsOpen={setIsOpenUnpublishAdModal}
-        onSubmit={() => {}}
+        onSubmit={handleUnpublish}
         variant="ads"
       />
       <BackButton />
@@ -101,17 +112,23 @@ const AdReport = () => {
           }}
         >
           <img
-            src="/uploads/Image_created_with_a_mobile_phone_de0a0f8e42.png"
-            // alt={feature.name}
+            src={
+              Array.isArray(ad?.ad_image?.data) && ad.ad_image.data[0]?.url
+                ? ad.ad_image.data[0].url
+                : emptyImage
+            }
+            alt={ad?.ad_name || ''}
             style={{ width: 55, height: 55, borderRadius: 6 }}
           />
           <div className="flex flex-col gap-1">
             <Flex alignItems="center" gap={1}>
-              <Typography variant="beta">Best Performing Ad</Typography>
+              <Typography variant="beta">{ad?.ad_name}</Typography>
               <div className=" flex items-center gap-1">
-                <CustomBadge variant="draft">Native card</CustomBadge>
-                <CustomBadge variant="grayOutline">Lifestyle listing</CustomBadge>
-                <CustomBadge variant="live">Live</CustomBadge>
+                {ad?.ad_type && <CustomBadge variant="draft">{ad?.ad_type?.title}</CustomBadge>}
+                {ad?.ad_spot && (
+                  <CustomBadge variant="grayOutline">{ad?.ad_spot?.ad_spot_title}</CustomBadge>
+                )}
+                <StatusBadge status={ad?.ad_status} />
               </div>
             </Flex>
             <Typography variant="pi" textColor="neutral600">
@@ -162,7 +179,7 @@ const AdReport = () => {
             )}
           </>
 
-          <CustomButton onClick={() => history.push('ad-report')}>
+          <CustomButton onClick={() => {}}>
             <Analytics stroke="#32324d" />
             View Report
           </CustomButton>
@@ -171,13 +188,14 @@ const AdReport = () => {
             Save
           </CustomButton>
 
-          <CustomButton onClick={(e) => {}}>
+          <CustomButton onClick={() => downloadPdf(pdfRef, `${ad?.ad_name}-report.pdf`)}>
             <Download stroke="#32324d" />
             Download PDF
           </CustomButton>
         </div>
       </Flex>
       <Flex
+        ref={pdfRef}
         direction="column"
         alignItems="unset"
         gap={6}
@@ -199,29 +217,37 @@ const AdReport = () => {
           </Typography>
           <Flex gap={3} wrap="wrap" alignItems="center">
             <MultiSelect value={status} onChange={(value) => setStatus(value)} size="S">
-              <MultiSelectOption value="all">All Statuses</MultiSelectOption>
-              <MultiSelectOption value="active">Active</MultiSelectOption>
-              <MultiSelectOption value="paused">Paused</MultiSelectOption>
+              {AD_STATUS_OPTIONS.map((status) => (
+                <MultiSelectOption key={status.value} value={status.value}>
+                  {status.label}
+                </MultiSelectOption>
+              ))}
             </MultiSelect>
             <SingleSelect value={type} onChange={(value) => setType(String(value))} size="S">
-              <SingleSelectOption value="all">All Types</SingleSelectOption>
-              <SingleSelectOption value="banner">Banner</SingleSelectOption>
-              <SingleSelectOption value="video">Video</SingleSelectOption>
+              <SingleSelectOption key={0} value="">
+                All Types
+              </SingleSelectOption>
+              {adTypes.map((type) => (
+                <SingleSelectOption key={type?.id} value={type?.id}>
+                  {type?.title}
+                </SingleSelectOption>
+              ))}
             </SingleSelect>
             <SingleSelect
               value={dateRange}
               onChange={(value) => setDateRange(String(value))}
               size="S"
             >
-              <SingleSelectOption value="last_7_days">Last 7 Days</SingleSelectOption>
-              <SingleSelectOption value="last_30_days">Last 30 Days</SingleSelectOption>
+              {TIMEFRAME_OPTIONS.map((timeframe) => (
+                <SingleSelectOption key={timeframe?.value} value={timeframe?.value}>
+                  {timeframe?.label}
+                </SingleSelectOption>
+              ))}
             </SingleSelect>
           </Flex>
         </Flex>
         <Grid marginTop={8} gap={4}>
-          {DummyData.map((data) => (
-            <DashboardCard key={data.id} data={data} />
-          ))}
+          {stats?.length > 0 && stats?.map((stat) => <DashboardCard key={stat.type} data={stat} />)}
         </Grid>
 
         <Flex alignItems="flex-start" style={{ width: '100%' }}>
@@ -271,7 +297,7 @@ const AdReport = () => {
                 </Flex>
               </Flex>
               <Box padding={4} marginTop={4} className="max-h-96">
-                <PerformanceAnalytics />
+                <PerformanceAnalytics data={adGraph} />
               </Box>
             </Box>
             <Box padding={6} hasRadius background="neutral0" shadow="filterShadow">
@@ -301,7 +327,7 @@ const AdReport = () => {
                 </Flex>
               </Flex>
               <Box padding={4} marginTop={4} className="max-h-96">
-                <ClickThroughRateTrend />
+                <ClickThroughRateTrend data={adGraph} />
               </Box>
             </Box>
           </Box>
@@ -326,7 +352,7 @@ const AdReport = () => {
                   Campaign
                 </Typography>
                 <Typography variant="epsilon" textColor="neutral600">
-                  Tourism Q1
+                  {ad?.campaign?.campaign_name || ''}
                 </Typography>
               </Flex>
               <Flex justifyContent="space-between" style={{ width: '100%' }}>
@@ -334,7 +360,7 @@ const AdReport = () => {
                   Ad Name
                 </Typography>
                 <Typography variant="epsilon" textColor="neutral600">
-                  Événement Révélateur
+                  {ad?.ad_name || ''}
                 </Typography>
               </Flex>
               <Flex justifyContent="space-between" style={{ width: '100%' }}>
@@ -342,7 +368,7 @@ const AdReport = () => {
                   Entity name
                 </Typography>
                 <Typography variant="epsilon" textColor="neutral600">
-                  Célébration Immobilière
+                  {ad?.campaign?.campaign_entity_name || ''}
                 </Typography>
               </Flex>
               <Flex justifyContent="space-between" style={{ width: '100%' }}>
@@ -350,7 +376,7 @@ const AdReport = () => {
                   Entity Registration
                 </Typography>
                 <Typography variant="epsilon" textColor="neutral600">
-                  8798709EG
+                  {ad?.campaign?.campaign_entity_type || ''}
                 </Typography>
               </Flex>
               <Flex justifyContent="space-between" style={{ width: '100%' }}>
@@ -358,7 +384,7 @@ const AdReport = () => {
                   License Number
                 </Typography>
                 <Typography variant="epsilon" textColor="neutral600">
-                  LCE090983
+                  {ad?.campaign?.campaign_entity_license_number || ''}
                 </Typography>
               </Flex>
               <Flex justifyContent="space-between" style={{ width: '100%' }}>
@@ -366,7 +392,7 @@ const AdReport = () => {
                   Ad Types
                 </Typography>
                 <Typography variant="epsilon" textColor="neutral600">
-                  Display Ad
+                  {ad?.ad_type?.title || ''}
                 </Typography>
               </Flex>
               <Flex justifyContent="space-between" style={{ width: '100%' }}>
@@ -390,7 +416,7 @@ const AdReport = () => {
                   Start date
                 </Typography>
                 <Typography variant="epsilon" textColor="neutral600">
-                  20 Aug 2025
+                  {ad?.ad_start_date || ''}
                 </Typography>
               </Flex>
               <Flex justifyContent="space-between" style={{ width: '100%' }}>
@@ -398,7 +424,7 @@ const AdReport = () => {
                   End date
                 </Typography>
                 <Typography variant="epsilon" textColor="neutral600">
-                  29 Aug 2025
+                  {ad?.ad_end_date || ''}
                 </Typography>
               </Flex>
               <Flex justifyContent="space-between" style={{ width: '100%' }}>
@@ -406,7 +432,7 @@ const AdReport = () => {
                   Link type
                 </Typography>
                 <Typography variant="epsilon" textColor="neutral600">
-                  External
+                  {ad?.ad_external_url ? 'External' : 'Internal'}
                 </Typography>
               </Flex>
             </Flex>

@@ -1,6 +1,8 @@
 import styled from 'styled-components';
 
-const CustomButton = styled.button`
+const CustomButton = styled.button.attrs((props) => ({
+  type: props.type || 'button', // default to 'button' if not specified
+}))`
   display: inline-flex;
   align-items: center;
   gap: 6px;

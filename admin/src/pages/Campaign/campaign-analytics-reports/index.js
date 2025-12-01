@@ -1,5 +1,5 @@
 // @ts-nocheck
-import React from 'react';
+import React, { useRef } from 'react';
 import { useHistory } from 'react-router-dom';
 
 import {
@@ -26,49 +26,21 @@ import DashboardCard from '../../../components/elements/dashboardcard';
 import PerformanceAnalytics from '../../Components/performanceAnalytics';
 import ClickThroughRateTrend from '../../Components/clickThroughRateTrend';
 import ExportReportCsvModal from '../components/exportReportCsvModal';
-
-const DummyData = [
-  {
-    id: 1,
-    title: 'Total Campaigns',
-    currentValue: 13,
-    isPositive: false,
-    differenceValue: 100,
-  },
-  {
-    id: 2,
-    title: 'Active Ads',
-    currentValue: 30,
-    isPositive: false,
-    differenceValue: 100,
-  },
-  {
-    id: 3,
-    title: 'Total Impressions',
-    currentValue: 500,
-    isPositive: true,
-    differenceValue: 50,
-  },
-  {
-    id: 4,
-    title: 'Total CLicks',
-    currentValue: 500,
-    isPositive: true,
-    differenceValue: 50,
-  },
-  {
-    id: 5,
-    title: 'CTR',
-    currentValue: 500,
-    isPositive: true,
-    differenceValue: 50,
-  },
-];
+import { AD_STATUS_OPTIONS, TIMEFRAME_OPTIONS } from '../../../utils/constants';
+import useAdType from '../../../components/hooks/useAdType';
+import useAdModuleStats from '../../../components/hooks/useAdModuleStats';
+import useOverallGraph from '../../../components/hooks/useOverallGraph';
+import useDownloadPdf from '../../../components/hooks/useDownloadPdf';
 
 const CampaignAnalyticsReport = () => {
-  const [status, setStatus] = React.useState(['all']);
-  const [type, setType] = React.useState('all');
-  const [dateRange, setDateRange] = React.useState('last_7_days');
+  const pdfRef = useRef();
+  const downloadPdf = useDownloadPdf();
+  const { adTypes } = useAdType();
+  const { overallGraph } = useOverallGraph();
+  const { stats } = useAdModuleStats();
+  const [status, setStatus] = React.useState(['']);
+  const [type, setType] = React.useState('');
+  const [dateRange, setDateRange] = React.useState('');
   const [isOpenExportReportCsvModal, setIsOpenExportReportCsvModal] = React.useState(false);
   const history = useHistory();
 
@@ -105,16 +77,15 @@ const CampaignAnalyticsReport = () => {
           </Button>
           <Button
             variant="tertiary"
-            onClick={(e) => {
-              setIsOpenExportReportCsvModal(true);
-            }}
+            onClick={() => downloadPdf(pdfRef, 'Overall-Report.pdf')}
             size="L"
           >
-            Download CSV
+            Download PDF
           </Button>
         </Flex>
       </Flex>
       <Flex
+        ref={pdfRef}
         direction="column"
         alignItems="unset"
         gap={6}
@@ -136,29 +107,37 @@ const CampaignAnalyticsReport = () => {
           </Typography>
           <Flex gap={3} wrap="wrap" alignItems="center">
             <MultiSelect value={status} onChange={(value) => setStatus(value)} size="S">
-              <MultiSelectOption value="all">All Statuses</MultiSelectOption>
-              <MultiSelectOption value="active">Active</MultiSelectOption>
-              <MultiSelectOption value="paused">Paused</MultiSelectOption>
+              {AD_STATUS_OPTIONS.map((status) => (
+                <MultiSelectOption key={status.value} value={status.value}>
+                  {status.label}
+                </MultiSelectOption>
+              ))}
             </MultiSelect>
             <SingleSelect value={type} onChange={(value) => setType(String(value))} size="S">
-              <SingleSelectOption value="all">All Types</SingleSelectOption>
-              <SingleSelectOption value="banner">Banner</SingleSelectOption>
-              <SingleSelectOption value="video">Video</SingleSelectOption>
+              <SingleSelectOption key={0} value="">
+                All Types
+              </SingleSelectOption>
+              {adTypes.map((type) => (
+                <SingleSelectOption key={type?.id} value={type?.id}>
+                  {type?.title}
+                </SingleSelectOption>
+              ))}
             </SingleSelect>
             <SingleSelect
               value={dateRange}
               onChange={(value) => setDateRange(String(value))}
               size="S"
             >
-              <SingleSelectOption value="last_7_days">Last 7 Days</SingleSelectOption>
-              <SingleSelectOption value="last_30_days">Last 30 Days</SingleSelectOption>
+              {TIMEFRAME_OPTIONS.map((timeframe) => (
+                <SingleSelectOption key={timeframe?.value} value={timeframe?.value}>
+                  {timeframe?.label}
+                </SingleSelectOption>
+              ))}
             </SingleSelect>
           </Flex>
         </Flex>
         <Grid marginTop={8} gap={4}>
-          {DummyData.map((data) => (
-            <DashboardCard key={data.id} data={data} />
-          ))}
+          {stats?.length > 0 && stats?.map((stat) => <DashboardCard key={stat.type} data={stat} />)}
         </Grid>
         <Box padding={6} hasRadius background="neutral0" shadow="filterShadow">
           <Flex direction="row" alignItems="center" justifyContent="space-between">
@@ -205,7 +184,7 @@ const CampaignAnalyticsReport = () => {
             </Flex>
           </Flex>
           <Box padding={4} marginTop={4} className="max-h-96">
-            <PerformanceAnalytics />
+            <PerformanceAnalytics data={overallGraph} />
           </Box>
         </Box>
         <Box padding={6} hasRadius background="neutral0" shadow="filterShadow">
@@ -235,7 +214,7 @@ const CampaignAnalyticsReport = () => {
             </Flex>
           </Flex>
           <Box padding={4} marginTop={4} className="max-h-96">
-            <ClickThroughRateTrend />
+            <ClickThroughRateTrend data={overallGraph} />
           </Box>
         </Box>
       </Flex>

@@ -1,6 +1,6 @@
 // @ts-nocheck
-import React from 'react';
-import { useHistory } from 'react-router-dom';
+import React, { useRef } from 'react';
+import { useHistory, useParams } from 'react-router-dom';
 
 import {
   Typography,
@@ -27,42 +27,25 @@ import PerformanceAnalytics from '../../Components/performanceAnalytics';
 import ClickThroughRateTrend from '../../Components/clickThroughRateTrend';
 import { format } from 'date-fns';
 import BackButton from '../../../components/elements/backButton';
-
-const DummyData = [
-  {
-    id: 2,
-    title: 'active ads',
-    currentValue: 3,
-    // isPositive: false,
-    // differenceValue: 100,
-  },
-  {
-    id: 3,
-    title: 'Total Impressions',
-    currentValue: 500,
-    isPositive: true,
-    differenceValue: 50,
-  },
-  {
-    id: 4,
-    title: 'Total CLicks',
-    currentValue: 500,
-    isPositive: true,
-    differenceValue: 50,
-  },
-  {
-    id: 5,
-    title: 'CTR',
-    currentValue: 500,
-    isPositive: true,
-    differenceValue: 50,
-  },
-];
+import useCampaignDetails from '../../../components/hooks/useCampaignDetails';
+import StatusBadge from '../../../components/elements/statusBadge';
+import useAdType from '../../../components/hooks/useAdType';
+import { AD_STATUS_OPTIONS, TIMEFRAME_OPTIONS } from '../../../utils/constants';
+import useCampaignStats from '../../../components/hooks/useCampaignStats';
+import useCampaignGraph from '../../../components/hooks/useCampaignGraph';
+import useDownloadPdf from '../../../components/hooks/useDownloadPdf';
 
 const CampaignReport = () => {
-  const [status, setStatus] = React.useState(['all']);
-  const [type, setType] = React.useState('all');
-  const [dateRange, setDateRange] = React.useState('last_7_days');
+  const { id } = useParams();
+  const pdfRef = useRef();
+  const downloadPdf = useDownloadPdf();
+  const { campaignGraph } = useCampaignGraph({ id: Number(id) });
+  const { campaign } = useCampaignDetails(Number(id));
+  const { adTypes } = useAdType();
+  const { stats } = useCampaignStats(Number(id));
+  const [status, setStatus] = React.useState(['']);
+  const [type, setType] = React.useState('');
+  const [dateRange, setDateRange] = React.useState('');
   const history = useHistory();
 
   return (
@@ -72,13 +55,12 @@ const CampaignReport = () => {
         <Flex direction="column" alignItems="flex-start">
           <Flex gap={2}>
             <p className="text-xs text-[#62627B] font-normal">
-              {format(new Date('2025-12-01'), 'MM/dd/yy')} -{' '}
-              {format(new Date('2024-12-31'), 'MM/dd/yy')}
+              {format(new Date(campaign?.min_date ?? '2024-12-31'), 'MM/dd/yy')} -{' '}
+              {format(new Date(campaign?.max_date ?? '2024-12-31'), 'MM/dd/yy')}
             </p>
-            {/* <CustomBadge variant={feature.status}>{feature.status}</CustomBadge> */}
-            <CustomBadge variant="live">Live</CustomBadge>
+            <StatusBadge status={campaign?.campaign_status} />
           </Flex>
-          <Typography variant="alpha">Tourism Q1</Typography>
+          <Typography variant="alpha">{campaign?.campaign_name}</Typography>
           <Breadcrumb>
             <BreadcrumbList>
               <BreadcrumbItem>
@@ -90,7 +72,7 @@ const CampaignReport = () => {
               </BreadcrumbItem>
               <BreadcrumbSeparator />
               <BreadcrumbItem>
-                <BreadcrumbLink>Tourism Q1</BreadcrumbLink>
+                <BreadcrumbLink>{campaign?.campaign_name} </BreadcrumbLink>
               </BreadcrumbItem>
               <BreadcrumbSeparator />
               <BreadcrumbItem>
@@ -99,11 +81,16 @@ const CampaignReport = () => {
             </BreadcrumbList>
           </Breadcrumb>
         </Flex>
-        <Button variant="tertiary" onClick={(e) => {}} size="L">
+        <Button
+          variant="tertiary"
+          onClick={() => downloadPdf(pdfRef, `${campaign?.campaign_name}-report.pdf`)}
+          size="L"
+        >
           Download PDF
         </Button>
       </Flex>
       <Flex
+        ref={pdfRef}
         direction="column"
         alignItems="unset"
         gap={6}
@@ -125,29 +112,37 @@ const CampaignReport = () => {
           </Typography>
           <Flex gap={3} wrap="wrap" alignItems="center">
             <MultiSelect value={status} onChange={(value) => setStatus(value)} size="S">
-              <MultiSelectOption value="all">All Statuses</MultiSelectOption>
-              <MultiSelectOption value="active">Active</MultiSelectOption>
-              <MultiSelectOption value="paused">Paused</MultiSelectOption>
+              {AD_STATUS_OPTIONS.map((status) => (
+                <MultiSelectOption key={status.value} value={status.value}>
+                  {status.label}
+                </MultiSelectOption>
+              ))}
             </MultiSelect>
             <SingleSelect value={type} onChange={(value) => setType(String(value))} size="S">
-              <SingleSelectOption value="all">All Types</SingleSelectOption>
-              <SingleSelectOption value="banner">Banner</SingleSelectOption>
-              <SingleSelectOption value="video">Video</SingleSelectOption>
+              <SingleSelectOption key={0} value="">
+                All Types
+              </SingleSelectOption>
+              {adTypes.map((type) => (
+                <SingleSelectOption key={type?.id} value={type?.id}>
+                  {type?.title}
+                </SingleSelectOption>
+              ))}
             </SingleSelect>
             <SingleSelect
               value={dateRange}
               onChange={(value) => setDateRange(String(value))}
               size="S"
             >
-              <SingleSelectOption value="last_7_days">Last 7 Days</SingleSelectOption>
-              <SingleSelectOption value="last_30_days">Last 30 Days</SingleSelectOption>
+              {TIMEFRAME_OPTIONS.map((timeframe) => (
+                <SingleSelectOption key={timeframe?.value} value={timeframe?.value}>
+                  {timeframe?.label}
+                </SingleSelectOption>
+              ))}
             </SingleSelect>
           </Flex>
         </Flex>
         <Grid marginTop={8} gap={4}>
-          {DummyData.map((data) => (
-            <DashboardCard key={data.id} data={data} />
-          ))}
+          {stats?.length > 0 && stats?.map((stat) => <DashboardCard key={stat.type} data={stat} />)}
         </Grid>
         <Box padding={6} hasRadius background="neutral0" shadow="filterShadow">
           <Flex direction="row" alignItems="center" justifyContent="space-between">
@@ -194,7 +189,7 @@ const CampaignReport = () => {
             </Flex>
           </Flex>
           <Box padding={4} marginTop={4} className="max-h-96">
-            <PerformanceAnalytics />
+            <PerformanceAnalytics data={campaignGraph} />
           </Box>
         </Box>
         <Box padding={6} hasRadius background="neutral0" shadow="filterShadow">
@@ -224,7 +219,7 @@ const CampaignReport = () => {
             </Flex>
           </Flex>
           <Box padding={4} marginTop={4} className="max-h-96">
-            <ClickThroughRateTrend />
+            <ClickThroughRateTrend data={campaignGraph} />
           </Box>
         </Box>
       </Flex>
