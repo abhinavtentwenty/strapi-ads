@@ -13,7 +13,6 @@ const fs = require('fs');
 const path = require('path');
 const _ = require('lodash');
 const { download, getTempDirectory, capitalizeFirst } = require('../helpers/generate-csv');
-const { errorResponse } = require('../../../../../helpers/error-handler');
 
 module.exports = createCoreService(modelName, ({ strapi }) => ({
   async duplicate(ctx) {
