@@ -26,7 +26,7 @@ import {
   PreviousLink,
 } from '@strapi/design-system';
 import { format } from 'date-fns';
-import { CarretDown } from '@strapi/icons';
+import { CarretDown, CarretUp } from '@strapi/icons';
 import CustomIconButton from '../../../components/elements/customIconButton';
 import Analytics from '../../../components/Icons/Analytics';
 import AdActionMenu from '../adActionMenu';
@@ -57,7 +57,25 @@ const AdList = () => {
   const [page, setPage] = useState(1);
   const [pageSize, setPageSize] = useState(10);
 
-  const { ads, pagination } = useAds({ page, pageSize, status, type, search, campaign });
+  const [sort, setSort] = useState({ field: 'ad_name', order: 'ASC' });
+
+  const { ads, pagination } = useAds({
+    page,
+    pageSize,
+    status,
+    type,
+    search,
+    campaign,
+    sort,
+  });
+
+  const handleSortChange = (field) => {
+    setSort((prevSort) => ({
+      field,
+      order: prevSort.field === field ? (prevSort.order === 'ASC' ? 'DESC' : 'ASC') : 'ASC',
+    }));
+    setPage(1);
+  };
 
   const { adTypes } = useAdType();
   const [activeCampaignPage, setActiveCampaignPage] = React.useState(1);
@@ -157,8 +175,14 @@ const AdList = () => {
               <Searchbar
                 name="search"
                 value={search}
-                onChange={(e) => setSearch(e.target.value)}
-                onClear={() => setSearch('')}
+                onChange={(e) => {
+                  setSearch(e.target.value);
+                  setPage(1); // Reset page to 1
+                }}
+                onClear={() => {
+                  setSearch('');
+                  setPage(1); // Reset page to 1
+                }}
                 clearLabel="Clear search"
                 placeholder="Search..."
               >
@@ -167,7 +191,10 @@ const AdList = () => {
               <Combobox
                 placeholder="All Campaigns"
                 value={campaign}
-                onChange={(v) => setCampaign(v)}
+                onChange={(v) => {
+                  setCampaign(v);
+                  setPage(1); // Reset page to 1
+                }}
                 filterValue={filter}
                 onFilterValueChange={(v) => setFilter(v ?? '')}
               >
@@ -189,14 +216,26 @@ const AdList = () => {
                   </Button>
                 )}
               </Combobox>
-              <MultiSelect value={status} onChange={(value) => setStatus(value)}>
+              <MultiSelect
+                value={status}
+                onChange={(value) => {
+                  setStatus(value);
+                  setPage(1); // Reset page to 1
+                }}
+              >
                 {AD_STATUS_OPTIONS.map((status) => (
                   <MultiSelectOption key={status.value} value={status.value}>
                     {status.label}
                   </MultiSelectOption>
                 ))}
               </MultiSelect>
-              <SingleSelect value={type} onChange={(value) => setType(String(value))}>
+              <SingleSelect
+                value={type}
+                onChange={(value) => {
+                  setType(String(value));
+                  setPage(1); // Reset page to 1
+                }}
+              >
                 <SingleSelectOption key={0} value="">
                   All Types
                 </SingleSelectOption>
@@ -212,47 +251,89 @@ const AdList = () => {
         <Table colCount={7} rowCount={ads.length + 1}>
           <Thead>
             <Tr className={TrStyles}>
-              <Th>
-                <div className="flex gap-2">
+              <Th onClick={() => handleSortChange('ad_name')}>
+                <div className="flex gap-2 items-center cursor-pointer">
                   <Typography variant="pi" fontWeight="bold" textColor="neutral700">
                     Ad
                   </Typography>
-                  <button
-                  // onClick={() => console.log('sort campaigns')}
-                  >
-                    <CarretDown className="size-2" />
-                  </button>
+                  {sort.field === 'ad_name' &&
+                    (sort.order === 'ASC' ? (
+                      <CarretDown className="size-2" />
+                    ) : (
+                      <CarretUp className="size-2" />
+                    ))}
                 </div>
               </Th>
-              <Th>
-                <Typography variant="pi" fontWeight="bold" textColor="neutral700">
-                  Date
-                </Typography>
+              <Th onClick={() => handleSortChange('ad_start_date')}>
+                <div className="flex gap-2 items-center cursor-pointer">
+                  <Typography variant="pi" fontWeight="bold" textColor="neutral700">
+                    Date
+                  </Typography>
+                  {sort.field === 'ad_start_date' &&
+                    (sort.order === 'ASC' ? (
+                      <CarretDown className="size-2" />
+                    ) : (
+                      <CarretUp className="size-2" />
+                    ))}
+                </div>
               </Th>
-              <Th>
-                <Typography variant="pi" fontWeight="bold" textColor="neutral700">
-                  Status
-                </Typography>
+              <Th onClick={() => handleSortChange('ad_status')}>
+                <div className="flex gap-2 items-center cursor-pointer">
+                  <Typography variant="pi" fontWeight="bold" textColor="neutral700">
+                    Status
+                  </Typography>
+
+                  {sort.field === 'ad_status' &&
+                    (sort.order === 'ASC' ? (
+                      <CarretDown className="size-2" />
+                    ) : (
+                      <CarretUp className="size-2" />
+                    ))}
+                </div>
               </Th>
-              <Th>
-                <Typography variant="pi" fontWeight="bold" textColor="neutral700">
-                  Campaign
-                </Typography>
+              <Th onClick={() => handleSortChange('campaign.campaign_name')}>
+                <div className="flex gap-2 items-center cursor-pointer">
+                  <Typography variant="pi" fontWeight="bold" textColor="neutral700">
+                    Campaign
+                  </Typography>
+                  {sort.field === 'campaign.campaign_name' &&
+                    (sort.order === 'ASC' ? (
+                      <CarretDown className="size-2" />
+                    ) : (
+                      <CarretUp className="size-2" />
+                    ))}
+                </div>
               </Th>
               <Th>
                 <Typography variant="pi" fontWeight="bold" textColor="neutral700">
                   Link
                 </Typography>
               </Th>
-              <Th>
-                <Typography variant="pi" fontWeight="bold" textColor="neutral700">
-                  Impressions
-                </Typography>
+              <Th onClick={() => handleSortChange('total_impressions')}>
+                <div className="flex gap-2 items-center cursor-pointer">
+                  <Typography variant="pi" fontWeight="bold" textColor="neutral700">
+                    Impressions
+                  </Typography>
+                  {sort.field === 'total_impressions' &&
+                    (sort.order === 'ASC' ? (
+                      <CarretDown className="size-2" />
+                    ) : (
+                      <CarretUp className="size-2" />
+                    ))}
+                </div>
               </Th>
-              <Th>
-                <Typography variant="pi" fontWeight="bold" textColor="neutral700">
-                  Clicks
-                </Typography>
+              <Th onClick={() => handleSortChange('total_clicks')}>
+                <div className="flex gap-2 items-center cursor-pointer">
+                  <Typography variant="pi" fontWeight="bold" textColor="neutral700">
+                    Clicks
+                  </Typography>
+                  {sort.field === 'total_clicks' &&
+                    (sort.order === 'ASC' ? (
+                      <CarretDown className="size-2" />
+                    ) : (
+                      <CarretUp className="size-2" />
+                    ))}
+                </div>
               </Th>
               <Th>
                 <Typography variant="pi" fontWeight="bold" textColor="neutral700">
@@ -305,7 +386,9 @@ const AdList = () => {
                   </Td>
 
                   <Td className={TdStyles}>
-                    <StatusBadge status={ad?.ad_status} />
+                    <StatusBadge
+                      status={ad?.campaign?.campaign_status === 'draft' ? 'draft' : ad?.ad_status}
+                    />
                   </Td>
 
                   <Td className={TdStyles}>

@@ -136,9 +136,9 @@ const CampaignAnalyticsReport = () => {
             </SingleSelect>
           </Flex>
         </Flex>
-        <Grid marginTop={8} gap={4}>
+        <Flex marginTop={8} gap={4}>
           {stats?.length > 0 && stats?.map((stat) => <DashboardCard key={stat.type} data={stat} />)}
-        </Grid>
+        </Flex>
         <Box padding={6} hasRadius background="neutral0" shadow="filterShadow">
           <Flex direction="row" alignItems="center" justifyContent="space-between">
             <Typography variant="beta" fontWeight="semi-bold" textColor="neutral900">

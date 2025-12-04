@@ -38,7 +38,7 @@ const TimelineView = ({ paginatedCampaigns = [] }) => {
             img: ad.ad_image?.url ?? '',
             adType: ad?.ad_type?.title ?? null,
             adSpot: ad?.ad_spot?.ad_spot_title ?? null,
-            status: ad?.ad_status,
+            status: c?.campaign_status === 'draft' ? 'draft' : ad?.ad_status,
             description: ad.ad_description,
           })),
         };

@@ -4,18 +4,18 @@ const _ = require('lodash');
 
 module.exports = (config, { strapi }) => {
     return async (ctx, next) =>{
-        await next();
-        const configurations=strapi.plugin('strapi-ads').config('apiRules');
-        const path=ctx.request.path.replace(/^\//,'');
-        const query=ctx.request.query;
-        const filters=query.filters||[];
-        const pathConfigs=configurations.filter(config=>config.apis.some(api=>api.split('?')[0]===path));
+    await next();
+    const configurations=strapi.plugin('strapi-ads').config('apiRules');
+    const path=ctx.request.path.replace(/^\//,'');
+    const query=ctx.request.query;
+    const filters=query.filters||[];
+    const pathConfigs=configurations.filter(config=>config.apis.some(api=>api.split('?')[0]===path));
 
-        const matchedConfigs = [];
-        for (const config of pathConfigs) {
-            for (const api of config.apis) {
-                const [apiBase, apiQuery] = api.split('?');
-                if (apiBase !== path) continue;
+    const matchedConfigs = [];
+    for (const config of pathConfigs) {
+        for (const api of config.apis) {
+            const [apiBase, apiQuery] = api.split('?');
+            if (apiBase !== path) continue;
 
                 let allMatch=true;
                 if(apiQuery){

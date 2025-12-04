@@ -29,7 +29,17 @@ const FormInput = ({
           placeholder={placeholder}
           type={type}
           error={error}
-          style={style}
+          style={{
+            ...(style || {}),
+            ...(disabled
+              ? {
+                  backgroundColor: 'white',
+                  border: 'none !important',
+                  boxShadow: 'none !important',
+                  color: '#62627B',
+                }
+              : {}),
+          }}
           disabled={disabled}
           {...props}
         />

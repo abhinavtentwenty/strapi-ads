@@ -4,7 +4,16 @@ import useSWR from 'swr';
 import pluginId from '../../pluginId';
 import qs from 'qs';
 
-const useAds = ({ page = 1, pageSize = 10, status, type, search, campaign, paginated = true }) => {
+const useAds = ({
+  page = 1,
+  pageSize = 10,
+  status,
+  type,
+  search,
+  campaign,
+  sort,
+  paginated = true,
+}) => {
   const { get } = useFetchClient();
 
   const cleanStatus = status.filter(Boolean);
@@ -20,6 +29,8 @@ const useAds = ({ page = 1, pageSize = 10, status, type, search, campaign, pagin
         ...(cleanStatus.length > 0 && { ad_status: cleanStatus }),
         ...(search && { ad_name: { $containsi: search } }),
       },
+      sort: `${sort.field}:${sort.order}`,
+
       populate: {
         ad_spot: { populate: '*' },
         ad_type: { populate: '*' },
@@ -31,7 +42,7 @@ const useAds = ({ page = 1, pageSize = 10, status, type, search, campaign, pagin
   );
 
   const { data, error, isLoading, mutate } = useSWR(
-    ['ads', paginated, page, pageSize, status, type, search, campaign],
+    ['ads', paginated, page, pageSize, status, type, search, campaign, sort],
     () => get(`/${pluginId}/ad/get?${query}`)
   );
 

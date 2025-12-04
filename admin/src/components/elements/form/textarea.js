@@ -8,6 +8,7 @@ const FormTextArea = ({
   placeholder = '',
   error,
   disabled = false,
+  style,
   ...props
 }) => {
   const { control } = useFormContext();
@@ -24,6 +25,17 @@ const FormTextArea = ({
           placeholder={placeholder}
           error={error}
           disabled={disabled}
+          style={{
+            ...(style || {}),
+            ...(disabled
+              ? {
+                  backgroundColor: 'white',
+                  border: 'none !important',
+                  boxShadow: 'none !important',
+                  color: '#62627B',
+                }
+              : {}),
+          }}
           {...props}
         />
       )}

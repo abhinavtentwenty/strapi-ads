@@ -54,6 +54,7 @@ const Dashboard = () => {
   const [status, setStatus] = useState(['']);
   const [type, setType] = useState('');
   const [time, setTime] = useState('');
+  const [sort, setSort] = useState({ field: 'campaign_name', order: 'ASC' });
 
   const [search, setSearch] = useState('');
   // const debouncedSearch = useDebounce(search, 400);
@@ -88,7 +89,16 @@ const Dashboard = () => {
     type,
     time,
     search,
+    sort,
   });
+
+  const handleSortChange = (field) => {
+    setSort((prevSort) => ({
+      field,
+      order: prevSort.field === field ? (prevSort.order === 'ASC' ? 'DESC' : 'ASC') : 'ASC',
+    }));
+    setPage(1);
+  };
 
   const currentPage = pagination?.page || 1;
   const totalPages = pagination?.pageCount || 1;
@@ -192,21 +202,39 @@ const Dashboard = () => {
                 <Searchbar
                   name="search"
                   value={search}
-                  onChange={(e) => setSearch(e.target.value)}
-                  onClear={() => setSearch('')}
+                  onChange={(e) => {
+                    setSearch(e.target.value);
+                    setPage(1); // Reset page to 1 when search changes
+                  }}
+                  onClear={() => {
+                    setSearch('');
+                    setPage(1); // Reset page to 1 when search is cleared
+                  }}
                   clearLabel="Clear search"
                   placeholder="Search..."
                 >
                   <></>
                 </Searchbar>
-                <MultiSelect value={status} onChange={(value) => setStatus(value)}>
+                <MultiSelect
+                  value={status}
+                  onChange={(value) => {
+                    setStatus(value);
+                    setPage(1); // Reset page to 1 when status filter changes
+                  }}
+                >
                   {CAMPAIGN_STATUS_OPTIONS.map((status) => (
                     <MultiSelectOption key={status.value} value={status.value}>
                       {status.label}
                     </MultiSelectOption>
                   ))}
                 </MultiSelect>
-                <SingleSelect value={type} onChange={(value) => setType(String(value))}>
+                <SingleSelect
+                  value={type}
+                  onChange={(value) => {
+                    setType(String(value));
+                    setPage(1); // Reset page to 1 when type filter changes
+                  }}
+                >
                   <SingleSelectOption key={0} value="">
                     All Types
                   </SingleSelectOption>
@@ -216,7 +244,13 @@ const Dashboard = () => {
                     </SingleSelectOption>
                   ))}
                 </SingleSelect>
-                <SingleSelect value={time} onChange={(value) => setTime(String(value))}>
+                <SingleSelect
+                  value={time}
+                  onChange={(value) => {
+                    setTime(String(value));
+                    setPage(1); // Reset page to 1 when time filter changes
+                  }}
+                >
                   {TIMEFRAME_OPTIONS.map((timeframe) => (
                     <SingleSelectOption key={timeframe?.value} value={timeframe?.value}>
                       {timeframe?.label}
@@ -229,7 +263,11 @@ const Dashboard = () => {
 
           <TabPanels>
             <TabPanel>
-              <ListView paginatedCampaigns={paginatedCampaigns} />
+              <ListView
+                paginatedCampaigns={paginatedCampaigns}
+                handleSortChange={handleSortChange}
+                sort={sort}
+              />
             </TabPanel>
             <TabPanel>
               <TimelineView paginatedCampaigns={paginatedCampaigns} />

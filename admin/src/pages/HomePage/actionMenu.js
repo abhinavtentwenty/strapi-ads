@@ -1,6 +1,7 @@
 // @ts-nocheck
 import React from 'react';
 import { useFetchClient } from '@strapi/helper-plugin';
+
 import useSWRMutation from 'swr/mutation';
 import { mutate } from 'swr';
 import pluginId from '../../pluginId';
@@ -30,8 +31,8 @@ const ActionMenu = ({ data }) => {
 
   const handleDuplicate = async () => {
     try {
-      await get(`/${pluginId}/get-campaigns/duplicate/${data.id}`);
-
+      const response = await get(`/${pluginId}/get-campaigns/duplicate/${data.id}`);
+      history.push(`campaigns/edit/${response?.data?.id}`);
       mutate(['campaigns']);
       toast.success('Campaign Successfully Duplicated!', {
         icon: <CheckCircle color="success500" />,
@@ -101,7 +102,10 @@ const ActionMenu = ({ data }) => {
               <Typography> Duplicate</Typography>
               <Duplicate />
             </PopoverItemButton>
-            <PopoverItemButton onClick={handleUnpublish}>
+            <PopoverItemButton
+              disabled={data?.campaign_status === 'inactive'}
+              onClick={handleUnpublish}
+            >
               <Typography>Unpublished</Typography>
               <Pause />
             </PopoverItemButton>

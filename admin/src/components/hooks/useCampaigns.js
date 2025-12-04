@@ -11,6 +11,7 @@ const useCampaigns = ({
   type,
   time,
   search,
+  sort,
   paginated = true,
 }) => {
   const { get } = useFetchClient();
@@ -29,6 +30,8 @@ const useCampaigns = ({
           createdAt: { $gte: timeframeDate.toISOString() },
         }),
       },
+      sort: `${sort?.field}:${sort?.order}`,
+
       populate: {
         campaign_status: true,
         ads: {
@@ -45,7 +48,7 @@ const useCampaigns = ({
   );
 
   const { data, error, isLoading, mutate } = useSWR(
-    ['campaigns', paginated, page, pageSize, status, type, time, search],
+    ['campaigns', paginated, page, pageSize, status, type, time, search, sort],
     () => get(`/${pluginId}/get-campaigns?${query}`)
   );
 

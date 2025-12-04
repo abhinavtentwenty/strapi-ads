@@ -104,13 +104,18 @@ module.exports = createCoreController(modelName, ({ strapi }) => ({
       }
 
       const campaignData = _.omit(data, ['ads']);
-      const checkConflict = await hasConflictingDates(data.ads, campaignData);
-      if (checkConflict.conflict) {
-        return {
-          error: 'Conflict detected',
-          message: checkConflict.message,
-          details: checkConflict,
-        };
+      let existing = null;
+      if(data.id){
+        existing = await strapi.service(modelName).findOne(data.id);
+      }
+      const campaignStatus = data.campaign_status || (existing ? existing.campaign_status : '');
+      if(campaignStatus==='active'){
+        const checkConflict=await hasConflictingDates(data.ads,campaignData);
+        if(checkConflict.conflict){
+          return {
+            error:'Conflict detected',message:checkConflict.message,details:checkConflict,
+          };
+        }
       }
 
       const startDates = data.ads.map((ad) => parseISO(ad.ad_start_date)).filter(Boolean);

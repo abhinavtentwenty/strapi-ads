@@ -24,14 +24,26 @@ Add the plugin to your Strapi configuration:
 module.exports = {
   'strapi-ads': {
     enabled: true,
-    resolve: './src/plugins/strapi-ads'
+  config:{
+      destinationModelConfig: {model: 'api::model-name.model-name', fields: ['field_name'], filters: { field_type: 'type_name' }, sort: { field_name: 'ASC' }  },
+      apiRules: [
+          {
+              "apis": [
+                  "api/api-endpoint-1?field_2=value",
+              ],
+              "ad_type": "ad-type-1",
+              "ad_spot": "ad-spot-1",
+              "ad_screen": "ad-screen-1"
+          }
+      ]
+  }
   },
 };
 ```
 
 ## Usage
 
-After installation, the custom UI components will be available in your Strapi admin panel. Navigate to the plugins section to configure and use the custom interfaces.
+After installation, the strapi Ads components will be available in your Strapi admin panel. Navigate to the plugins section to configure and use the custom interfaces.
 
 ## Development
 

@@ -142,7 +142,7 @@ module.exports = createCoreService('plugin::strapi-ads.campaign', ({ strapi }) =
     });
   },
 
-  async aggregateDailyStats(date) {
+  async aggregateCampaignStats(date) {
     const statDate = date || format(subDays(new Date(), 1), 'yyyy-MM-dd');
     const dayBefore = format(subDays(new Date(statDate), 1), 'yyyy-MM-dd');
 
@@ -294,8 +294,9 @@ module.exports = createCoreService('plugin::strapi-ads.campaign', ({ strapi }) =
     const previousTotalImpressions = previousDayStats?.total_impressions || 0;
     const previousTotalClicks = previousDayStats?.total_clicks || 0;
 
-    const totalImpressions = previousTotalImpressions + dailyImpressions;
-    const totalClicks = previousTotalClicks + dailyClicks;
+    const totalImpressions =
+        parseInt(previousTotalImpressions, 10) + dailyImpressions;
+    const totalClicks = parseInt(previousTotalClicks, 10) + dailyImpressions;
 
     console.log({
       stat_date: statDate,

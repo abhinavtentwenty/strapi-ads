@@ -15,7 +15,7 @@ import {
   Grid,
 } from '@strapi/design-system';
 
-import { CarretDown, Plus } from '@strapi/icons';
+import { CarretDown, Plus, CarretUp } from '@strapi/icons';
 // import { EmptyDocuments } from "@strapi/icons/symbols";
 
 import Analytics from '../../components/Icons/Analytics';
@@ -28,64 +28,107 @@ import CustomBadge from '../../components/elements/badge';
 import StatusBadge from '../../components/elements/statusBadge';
 import useAdModuleStats from '../../components/hooks/useAdModuleStats';
 
-const ListView = ({ paginatedCampaigns }) => {
+const ListView = ({ paginatedCampaigns, handleSortChange, sort }) => {
   const history = useHistory();
   const { stats } = useAdModuleStats();
 
   return (
     <>
       <div className="!p-6 ">
-        <Grid marginTop={8} gap={4}>
+        <Flex marginTop={8} gap={4}>
           {stats?.length > 0 && stats?.map((stat) => <DashboardCard key={stat.type} data={stat} />)}
-        </Grid>
+        </Flex>
       </div>
       <Table colCount={7} rowCount={paginatedCampaigns?.length}>
         <Thead>
           <Tr className={TrStyles}>
-            <Th>
-              <div className="flex gap-2">
+            <Th onClick={() => handleSortChange('campaign_name')}>
+              <div className="flex gap-2 items-center cursor-pointer">
                 <Typography variant="pi" fontWeight="bold" textColor="neutral700">
                   Campaign
                 </Typography>
-                <button onClick={() => console.log('sort campaigns')}>
-                  <CarretDown className="size-2" />
-                </button>
+                {sort.field === 'campaign_name' &&
+                  (sort.order === 'ASC' ? (
+                    <CarretDown className="size-2" />
+                  ) : (
+                    <CarretUp className="size-2" />
+                  ))}
               </div>
             </Th>
-            <Th>
-              <Typography variant="pi" fontWeight="bold" textColor="neutral700">
-                Date
-              </Typography>
+            <Th onClick={() => handleSortChange('min_date')}>
+              <div className="flex gap-2 items-center cursor-pointer">
+                <Typography variant="pi" fontWeight="bold" textColor="neutral700">
+                  Date
+                </Typography>
+                {sort.field === 'min_date' &&
+                  (sort.order === 'ASC' ? (
+                    <CarretDown className="size-2" />
+                  ) : (
+                    <CarretUp className="size-2" />
+                  ))}
+              </div>
             </Th>
-            <Th>
-              <Typography variant="pi" fontWeight="bold" textColor="neutral700">
-                Status
-              </Typography>
+            <Th onClick={() => handleSortChange('campaign_status')}>
+              <div className="flex gap-2 items-center cursor-pointer">
+                <Typography variant="pi" fontWeight="bold" textColor="neutral700">
+                  Status
+                </Typography>
+                {sort.field === 'campaign_status' &&
+                  (sort.order === 'ASC' ? (
+                    <CarretDown className="size-2" />
+                  ) : (
+                    <CarretUp className="size-2" />
+                  ))}
+              </div>
             </Th>
             <Th>
               <Typography variant="pi" fontWeight="bold" textColor="neutral700">
                 Ads
               </Typography>
             </Th>
-            <Th>
-              <Typography variant="pi" fontWeight="bold" textColor="neutral700">
-                Impressions
-              </Typography>
+            <Th onClick={() => handleSortChange('total_impressions')}>
+              <div className="flex gap-2 items-center cursor-pointer">
+                <Typography variant="pi" fontWeight="bold" textColor="neutral700">
+                  Impressions
+                </Typography>
+                {sort.field === 'total_impressions' &&
+                  (sort.order === 'ASC' ? (
+                    <CarretDown className="size-2" />
+                  ) : (
+                    <CarretUp className="size-2" />
+                  ))}
+              </div>
             </Th>
-            <Th>
-              <Typography variant="pi" fontWeight="bold" textColor="neutral700">
-                Clicks
-              </Typography>
+            <Th onClick={() => handleSortChange('total_clicks')}>
+              <div className="flex gap-2 items-center cursor-pointer">
+                <Typography variant="pi" fontWeight="bold" textColor="neutral700">
+                  Clicks
+                </Typography>
+                {sort.field === 'total_clicks' &&
+                  (sort.order === 'ASC' ? (
+                    <CarretDown className="size-2" />
+                  ) : (
+                    <CarretUp className="size-2" />
+                  ))}
+              </div>
             </Th>
             <Th>
               <Typography variant="pi" fontWeight="bold" textColor="neutral700">
                 Avg. CTR
               </Typography>
             </Th>
-            <Th>
-              <Typography variant="pi" fontWeight="bold" textColor="neutral700">
-                Entity Name
-              </Typography>
+            <Th onClick={() => handleSortChange('campaign_entity_name')}>
+              <div className="flex gap-2 items-center cursor-pointer">
+                <Typography variant="pi" fontWeight="bold" textColor="neutral700">
+                  Entity Name
+                </Typography>
+                {sort.field === 'campaign_entity_name' &&
+                  (sort.order === 'ASC' ? (
+                    <CarretDown className="size-2" />
+                  ) : (
+                    <CarretUp className="size-2" />
+                  ))}
+              </div>
             </Th>
 
             <Th>
@@ -128,18 +171,20 @@ const ListView = ({ paginatedCampaigns }) => {
                 </Td>
                 <Td className={TdStyles}>
                   <Typography as="span" variant="epsilon">
-                    {Math.floor(Math.random() * 10000)}
+                    {c?.total_impressions ?? ''}
                   </Typography>
                 </Td>
                 <Td className={TdStyles}>
                   <Typography as="span" variant="epsilon">
-                    {Math.floor(Math.random() * 10000)}
+                    {c?.total_clicks ?? ''}
                   </Typography>
                 </Td>
 
                 <Td className={TdStyles}>
                   <Typography as="span" variant="epsilon">
-                    {`${Math.floor(Math.random() * 100)}%`}
+                    {c?.total_clicks && c?.total_impressions
+                      ? `${(c?.total_clicks / c?.total_impressions) * 100}%`
+                      : '0%'}
                   </Typography>
                 </Td>
                 <Td className={TdStyles}>

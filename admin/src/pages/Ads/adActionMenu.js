@@ -21,7 +21,6 @@ import pluginId from '../../pluginId';
 import useUnpublishOrArchiveAd from '../../components/hooks/useUnpublisOrArchiveAd';
 const AdActionMenu = ({ data }) => {
   const history = useHistory();
-
   const [isOpenArchiveAdModal, setIsOpenArchiveAdModal] = React.useState(false);
   const [isOpenUnpublishAdModal, setIsOpenUnpublishAdModal] = React.useState(false);
   const [openPopover, setOpenPopover] = React.useState(false);
@@ -31,7 +30,8 @@ const AdActionMenu = ({ data }) => {
 
   const handleDuplicate = async () => {
     try {
-      await get(`/${pluginId}/ad/duplicate/${data.id}`);
+      const response = await get(`/${pluginId}/ad/duplicate/${data.id}`);
+      history.push(`campaigns/edit/${response?.data?.campaign?.id}`);
 
       mutate(['ads']);
       toast.success('Campaign Successfully Duplicated!', {
@@ -94,9 +94,7 @@ const AdActionMenu = ({ data }) => {
               <Typography>View Details</Typography>
               <Eye />
             </PopoverItemButton>
-            <PopoverItemButton
-            //  onClick={() => history.push(`ads/edit/${data.id}`)}
-            >
+            <PopoverItemButton onClick={() => history.push(`campaigns/edit/${data?.campaign?.id}`)}>
               <Typography> Edit </Typography>
               <Edit />
             </PopoverItemButton>
@@ -104,7 +102,7 @@ const AdActionMenu = ({ data }) => {
               <Typography> Duplicate</Typography>
               <Duplicate />
             </PopoverItemButton>
-            <PopoverItemButton onClick={handleUnpublish}>
+            <PopoverItemButton disabled={data?.ad_status === 'inactive'} onClick={handleUnpublish}>
               <Typography>Unpublished</Typography>
               <Pause />
             </PopoverItemButton>

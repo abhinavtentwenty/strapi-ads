@@ -1,12 +1,12 @@
 // @ts-nocheck
-import React from 'react';
+import React, { useRef } from 'react';
 import axios from 'axios';
 import { useHistory } from 'react-router-dom';
 import { format, parseISO, isValid } from 'date-fns';
 import { auth } from '@strapi/helper-plugin';
 import styled from 'styled-components';
 import { useForm, useWatch, FormProvider, Controller } from 'react-hook-form';
-import { Plus, Rocket, More, Pencil, CheckCircle } from '@strapi/icons';
+import { Plus, Rocket, More, Pencil, CheckCircle, Download } from '@strapi/icons';
 import Analytics from '../../../components/Icons/Analytics';
 import Edit from '../../../components/Icons/Edit';
 import Pause from '../../../components/Icons/Pause';
@@ -68,7 +68,7 @@ import useCampaignDetails from '../../../components/hooks/useCampaignDetails';
 import BackButton from '../../../components/elements/backButton';
 import { useFetchClient } from '@strapi/helper-plugin';
 import pluginId from '../../../pluginId';
-import { CampaignSchema } from '../../../schemas/campaign';
+import { buildCampaignSchema } from '../../../schemas/campaign';
 import { zodResolver } from '@hookform/resolvers/zod';
 import AdDurationOverlapModal from './adDurationOverlapModal';
 import StatusBadge from '../../../components/elements/statusBadge';
@@ -76,15 +76,18 @@ import useUnpublishOrArchiveCampaign from '../../../components/hooks/useUnpublis
 import { DESTINATION_MODEL_OPTIONS } from '../../../utils/constants';
 import useUnpublishOrArchiveAd from '../../../components/hooks/useUnpublisOrArchiveAd';
 import useDestinationPages from '../../../components/hooks/useDestinationPages';
+import useDownloadPdf from '../../../components/hooks/useDownloadPdf';
+
 import { CalendarDate } from '@internationalized/date';
+import qs from 'qs';
 
 // Default values for a new ad
 export const defaultAdValues = {
   ad_name: '',
   ad_start_date: null,
   ad_end_date: null,
-  ad_type: 0,
-  ad_spot: 0,
+  ad_type: null,
+  ad_spot: null,
   ad_status: 'draft',
   ad_screens: [],
   ad_headline: '',
@@ -106,6 +109,11 @@ const PopoverItem = styled(Flex)`
   transition: background 0.2s ease;
   &:hover {
     background: ${({ theme }) => theme.colors.neutral100};
+  }
+  &.disabled {
+    cursor: not-allowed;
+    opacity: 0.5;
+    pointer-events: none;
   }
 `;
 
@@ -178,8 +186,12 @@ const CampaignForm = ({
   campaignId = null,
   onSubmit = () => {},
 }) => {
+  const { adTypes } = useAdType();
+  const imgRef = useRef();
+  const downloadPdf = useDownloadPdf();
+  const CampaignSchema = React.useMemo(() => buildCampaignSchema(adTypes), [adTypes]);
   const resolver = zodResolver(CampaignSchema);
-  const { campaign } = useCampaignDetails(Number(campaignId));
+  const { campaign, mutate } = useCampaignDetails(Number(campaignId));
 
   const addDefaultValues = (mode === 'edit' || mode === 'view') && campaign;
   const methods = useForm({
@@ -200,7 +212,6 @@ const CampaignForm = ({
   const { updateAdStatus } = useUnpublishOrArchiveAd();
   const token = auth.getToken();
   const history = useHistory();
-  const { adTypes } = useAdType();
   const [isOpenCreateCampaignModal, setIsOpenCreateCampaignModal] = React.useState(false);
   const [isOpenEditCampaignModal, setIsOpenEditCampaignModal] = React.useState(false);
   const morePopoverRef = React.useRef(null);
@@ -232,16 +243,16 @@ const CampaignForm = ({
               ad_end_date: toUTCDate(ad.ad_end_date),
               ad_type: ad?.ad_type?.id,
               ad_spot: ad?.ad_spot?.id,
-              ad_destination_models: ad?.ad_destination_models,
+              ad_destination_models: ad?.ad_destination_models ?? undefined,
               ad_destination_page: ad?.ad_destination_page,
               ad_external_url: ad?.ad_external_url,
-              ad_status: ad?.ad_status?.status_title,
+              ad_status: ad?.ad_status,
               ad_screens: ad?.ad_screens.map((screen) => screen.id) || [],
               ad_headline: ad?.ad_headline,
               ad_description: ad?.ad_description,
               is_external: ad?.ad_external_url ? 'yes' : 'no',
               ad_image: null,
-              ad_image_url: Array.isArray(ad?.ad_image) && ad.ad_image[0] ? ad.ad_image[0].url : '',
+              ad_image_url: ad.ad_image ? ad.ad_image.url : '',
               ad_video_url: ad?.ad_video_url,
               selected: ad?.ad_status?.status_title !== 'draft' ? true : false,
             })) || [],
@@ -251,7 +262,6 @@ const CampaignForm = ({
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [campaign?.id, mode]);
 
-  console.log('form values', methods.getValues());
   const errors = methods.formState.errors;
   const campaign_name = useWatch({
     control: methods.control,
@@ -265,25 +275,24 @@ const CampaignForm = ({
   const [activeAdType, setActiveAdType] = React.useState(null);
   const adTypeWatch = useWatch({ control: methods.control, name: `ads.${activeAdIdx}.ad_type` });
 
-  // console.log('activeAdIdx', activeAdIdx);
-
   React.useEffect(() => {
     if (!activeAdIdx && activeAdIdx !== 0) return;
 
-    // console.log('fetching default destination page options');
     const model = methods.getValues(`ads.${activeAdIdx}.ad_destination_models`);
     const page = methods.getValues(`ads.${activeAdIdx}.ad_destination_page`);
+
     if (
       (mode === 'edit' || mode === 'view') &&
       activeAdIdx !== undefined &&
+      model !== undefined &&
       model !== null &&
+      page !== undefined &&
       page !== null
     ) {
       const fetchDestinationPages = async () => {
         const { data } = await get(
           `/${pluginId}/get-destination-pages/${model}?filters[id]=${page}`
         );
-        // console.log('fetched destination pages', data);
         setActiveDestinationPageOptionsDefault(data?.results || []);
       };
 
@@ -294,59 +303,47 @@ const CampaignForm = ({
   const watchCurrentDestinationModel = useWatch({
     control: methods.control,
     name: activeAdIdx !== null ? `ads.${activeAdIdx}.ad_destination_models` : '',
-    defaultValue: null,
+    defaultValue: undefined,
   });
-
-  // console.log('watchCurrentDestinationModel', watchCurrentDestinationModel);
   const [activeDestinationPage, setActiveDestinationPage] = React.useState(1);
   const [activeDestinationPageOptions, setActiveDestinationPageOptions] = React.useState([]);
-
-  const { destinationPages, totalPages } = useDestinationPages({
-    destinationModel: watchCurrentDestinationModel ?? null,
-    page: activeDestinationPage ?? 1,
-  });
+  const [totalDestinationPageOptions, setTotalDestinationPageOptions] = React.useState(1);
 
   React.useEffect(() => {
-    // console.log('model changed, resetting destination pages');
+    if (!watchCurrentDestinationModel && activeAdIdx !== null) return;
 
-    // When model changes: reset everything
-    if (watchCurrentDestinationModel !== undefined) {
-      // Reset only if not already at initial values
-      if (activeDestinationPage !== 1) setActiveDestinationPage(1);
-      if (activeDestinationPageOptions.length !== 0) setActiveDestinationPageOptions([]);
-    }
-  }, [watchCurrentDestinationModel]);
+    const fetchDestinationPages = async () => {
+      try {
+        const query = qs.stringify(
+          {
+            pagination: { page: activeDestinationPage, pageSize: 10 },
+          },
+          { encodeValuesOnly: true }
+        );
 
-  React.useEffect(() => {
-    if (!destinationPages) return;
-    // console.log('fetching destination pages', destinationPages, activeDestinationPage);
+        const response = await get(
+          `/${pluginId}/get-destination-pages/${methods.getValues(`ads.${activeAdIdx}.ad_destination_models`)}?${query}`
+        );
 
-    setActiveDestinationPageOptions((prev) => {
-      // If the new value is the same as the previous, do not update
-      if (
-        activeDestinationPage === 1 &&
-        JSON.stringify(prev) === JSON.stringify(destinationPages)
-      ) {
-        return prev;
+        setActiveDestinationPageOptions((prev) => [...prev, ...(response?.data?.results || [])]);
+        setTotalDestinationPageOptions(response?.data?.pagination?.total || 0);
+      } catch (err) {
+        console.error('Failed to fetch destination pages:', err);
       }
-      if (activeDestinationPage === 1) {
-        return destinationPages;
-      }
-      const merged = [...prev, ...destinationPages];
-      if (JSON.stringify(prev) === JSON.stringify(merged)) {
-        return prev;
-      }
-      return merged;
-    });
-  }, [destinationPages, activeDestinationPage]);
+    };
+
+    fetchDestinationPages();
+  }, [watchCurrentDestinationModel, activeDestinationPage]);
 
   React.useEffect(() => {
     const adType = getCurrentAdType();
     setActiveAdType(adType);
-  }, [adTypeWatch]);
+  }, [adTypeWatch, activeAdIdx]);
 
   const getCurrentAdType = () => {
-    return adTypes.find((type) => type.id === adTypeWatch) || null;
+    return (
+      adTypes.find((type) => type.id === methods.getValues(`ads.${activeAdIdx}.ad_type`)) || null
+    );
   };
 
   // Checkbox change handler for ad selection
@@ -380,12 +377,12 @@ const CampaignForm = ({
 
   const getCurrentAdTitle = (idx, ads) => {
     const ad = ads[idx] || {};
-    return ad.name || 'Ad Title Preview';
+    return ad.name || 'Title';
   };
 
   const getCurrentAdDescription = (idx, ads) => {
     const ad = ads[idx] || {};
-    return ad.ad_description || 'Ad description preview';
+    return ad.ad_description || 'Description goes here...';
   };
 
   const adTypeCardImages = {
@@ -415,8 +412,8 @@ const CampaignForm = ({
     updateAdStatus({
       adId: adId,
       status: 'inactive',
-      // onComplete: () => setIsOpenUnpublishAdModal(false),
     });
+    mutate(['campaign', Number(campaignId)]);
   };
 
   const formatDate = (dateObj) => {
@@ -424,42 +421,47 @@ const CampaignForm = ({
     return format(new Date(dateObj), 'yyyy-MM-dd');
   };
 
-  // console.log('hook form', methods.watch());
-  // console.log('rendering campaign form');
+  const validateForm = async () => {
+    const data = methods.getValues();
+    const result = await resolver(data, {}, {});
+    let valid = true;
+
+    // Set errors if any
+    if (result.errors && Object.keys(result.errors).length > 0) {
+      valid = false;
+      Object.entries(result.errors).forEach(([key, value]) => {
+        if (key === 'ads') return;
+        if (value?.message) {
+          methods.setError(key, {
+            type: 'manual',
+            message: value.message,
+          });
+        }
+      });
+
+      if (Array.isArray(result.errors.ads)) {
+        result.errors.ads.forEach((adErrorObj, index) => {
+          Object.entries(adErrorObj).forEach(([field, errorInfo]) => {
+            const fieldPath = `ads.${index}.${field}`;
+            methods.setError(fieldPath, {
+              type: 'manual',
+              message: errorInfo.message,
+            });
+          });
+        });
+      }
+    }
+
+    return valid;
+  };
+
   const handleCampaignSubmit = async (type) => {
     // type: 'publish' | 'save'
     try {
+      const isValid = await validateForm();
+      if (!isValid) return;
+
       const data = methods.getValues();
-      console.log('Form Data:', data);
-
-      const result = await resolver(data, {}, {});
-      console.log('Resolver Result:', result);
-      if (result.errors && Object.keys(result.errors).length > 0) {
-        Object.entries(result.errors).forEach(([key, value]) => {
-          if (key === 'ads') return;
-          if (value?.message) {
-            methods.setError(key, {
-              type: 'manual',
-              message: value.message,
-            });
-          }
-        });
-
-        if (Array.isArray(result.errors.ads)) {
-          result.errors.ads.forEach((adErrorObj, index) => {
-            Object.entries(adErrorObj).forEach(([field, errorInfo]) => {
-              const fieldPath = `ads.${index}.${field}`;
-
-              methods.setError(fieldPath, {
-                type: 'manual',
-                message: errorInfo.message,
-              });
-            });
-          });
-        }
-        return;
-      }
-
       const adImages = (data.ads || []).map((ad) => (ad.ad_image ? ad.ad_image : null));
 
       const formattedAds = data.ads.map((ad) => {
@@ -467,19 +469,34 @@ const CampaignForm = ({
           ...ad,
           ad_start_date: formatDate(ad.ad_start_date),
           ad_end_date: formatDate(ad.ad_end_date),
+          ad_status:
+            ad.selected && type === 'unpublish'
+              ? 'inactive'
+              : ad.selected
+                ? 'live'
+                : ad.ad_status === 'live'
+                  ? 'inactive'
+                  : ad.ad_status,
+          ad_external_url: ad.is_external === 'yes' ? ad.ad_external_url : null,
+          ad_destination_page: ad.is_external === 'no' ? ad.ad_destination_page : null,
+          ad_destination_models: ad.is_external === 'no' ? ad.ad_destination_models : null,
         };
 
-        // If ad is external, remove destination fields
-        if (ad.is_external === 'yes') {
-          delete formatted.ad_destination_page;
-          delete formatted.ad_destination_models;
-        }
-
-        return formatted;
+        // Always remove ad_image for internal ads
+        const { ad_image, ...rest } = formatted;
+        return rest;
       });
 
       const payload = {
         ...data,
+        campaign_status:
+          type === 'publish'
+            ? 'active'
+            : type === 'unpublish'
+              ? 'inactive'
+              : data.id === null
+                ? 'draft'
+                : data.campaign_status,
         ads: formattedAds,
       };
 
@@ -498,9 +515,30 @@ const CampaignForm = ({
         },
       });
 
-      console.log('Success:', response);
-      history.push(`/plugins/${pluginId}/campaigns`);
-      toast.success('Campaign Successfully Created!', {
+      if (response?.data?.details?.conflict) {
+        setIsOpenCreateCampaignModal(false);
+        setIsOpenEditCampaignModal(false);
+        setOpenAdDurationOverlapModal(true);
+        setAdDurationOverlapData(response?.data?.details?.adRemote);
+        return;
+      }
+
+      if (mode === 'create')
+        history.push(`/plugins/${pluginId}/campaigns/edit/${response.data.id}`);
+
+      if (mode === 'edit') mutate(['campaign', Number(campaignId)]);
+
+      let toastMsg = 'Campaign updated!';
+      if (mode === 'create') {
+        if (type === 'publish') toastMsg = 'Campaign published!';
+        else if (type === 'save') toastMsg = 'Campaign saved as draft!';
+      } else {
+        if (type === 'publish') toastMsg = 'Campaign published!';
+        else if (type === 'save') toastMsg = 'Campaign changes saved!';
+        else if (type === 'unpublish') toastMsg = 'Campaign unpublished!';
+      }
+
+      toast.success(toastMsg, {
         icon: <CheckCircle color="success500" />,
         position: 'top-center',
         style: {
@@ -533,7 +571,10 @@ const CampaignForm = ({
       <EditCampaignModal
         isOpen={isOpenEditCampaignModal}
         setIsOpen={setIsOpenEditCampaignModal}
-        onSubmit={() => {}}
+        isPublish={campaign?.campaign_status !== 'active'}
+        onSubmit={() =>
+          handleCampaignSubmit(campaign?.campaign_status === 'active' ? 'unpublish' : 'publish')
+        }
         adsCount={getSelectedAds(formAds).length}
       />
       <ConfirmArchiveModal
@@ -546,7 +587,6 @@ const CampaignForm = ({
         setIsOpen={setIsOpenUnpublishCampaignModal}
         onSubmit={handleUnpublish}
       />
-      {(mode === 'edit' || mode === 'view') && <BackButton />}
       <form
         className="py-16"
         // onSubmit={methods.handleSubmit(handleCampaignSubmit)}
@@ -557,120 +597,149 @@ const CampaignForm = ({
          Campaign title and action buttons
          =============================================
         */}
-        <div className="flex justify-between items-center">
-          {mode === 'create' && <Typography variant="alpha">Create Campaign</Typography>}
-          {(mode === 'edit' || mode === 'view') && (
-            <Flex direction="column" alignItems="flex-start">
-              <Flex gap={2}>
-                <p className="text-xs text-[#62627B] font-normal">
-                  {format(new Date(campaign?.min_date ?? '2025-12-01'), 'MM/dd/yy')} -{' '}
-                  {format(new Date(campaign?.max_date ?? '2024-12-31'), 'MM/dd/yy')}
-                </p>
-                <StatusBadge status={campaign?.campaign_status ?? 'draft'} />
+        <div
+          style={{
+            padding: '16px 0',
+            position: 'sticky',
+            top: 0,
+            zIndex: 100, // adjust as needed
+            background: '#f6f6f9', // recommended to avoid transparency issues
+          }}
+        >
+          {(mode === 'edit' || mode === 'view') && <BackButton />}
+
+          <div className="flex justify-between items-center">
+            {mode === 'create' && <Typography variant="alpha">Create Campaign</Typography>}
+            {(mode === 'edit' || mode === 'view') && (
+              <Flex direction="column" alignItems="flex-start">
+                <Flex gap={2}>
+                  <p className="text-xs text-[#62627B] font-normal">
+                    {format(new Date(campaign?.min_date ?? '2025-12-01'), 'MM/dd/yy')} -{' '}
+                    {format(new Date(campaign?.max_date ?? '2024-12-31'), 'MM/dd/yy')}
+                  </p>
+                  <StatusBadge status={campaign?.campaign_status ?? 'draft'} />
+                </Flex>
+                <Typography variant="alpha">{methods.getValues('campaign_name')}</Typography>
+                <Breadcrumb>
+                  <BreadcrumbList>
+                    <BreadcrumbItem>
+                      <BreadcrumbLink href="/">ADGM</BreadcrumbLink>
+                    </BreadcrumbItem>
+                    <BreadcrumbSeparator />
+                    <BreadcrumbItem>
+                      <BreadcrumbLink>Campaign Management </BreadcrumbLink>
+                    </BreadcrumbItem>
+                    <BreadcrumbSeparator />
+                    <BreadcrumbItem>
+                      <BreadcrumbLink>{methods.getValues('campaign_name')}</BreadcrumbLink>
+                    </BreadcrumbItem>
+                  </BreadcrumbList>
+                </Breadcrumb>
               </Flex>
-              <Typography variant="alpha">{methods.getValues('campaign_name')}</Typography>
-              <Breadcrumb>
-                <BreadcrumbList>
-                  <BreadcrumbItem>
-                    <BreadcrumbLink href="/">ADGM</BreadcrumbLink>
-                  </BreadcrumbItem>
-                  <BreadcrumbSeparator />
-                  <BreadcrumbItem>
-                    <BreadcrumbLink>Campaign Management </BreadcrumbLink>
-                  </BreadcrumbItem>
-                  <BreadcrumbSeparator />
-                  <BreadcrumbItem>
-                    <BreadcrumbLink>{methods.getValues('campaign_name')}</BreadcrumbLink>
-                  </BreadcrumbItem>
-                </BreadcrumbList>
-              </Breadcrumb>
-            </Flex>
-          )}
-          <div className="flex gap-4">
-            {mode === 'edit' && (
-              <>
-                <Button
-                  startIcon={<More />}
-                  variant="tertiary"
-                  size="L"
-                  ref={morePopoverRef}
-                  onClick={() => setOpenMorePopover(!openMorePopover)}
-                >
-                  More
-                </Button>
-
-                {openMorePopover && (
-                  <Popover
-                    source={morePopoverRef}
-                    placement="bottom"
-                    spacing={4}
-                    onDismiss={() => setOpenMorePopover(false)}
+            )}
+            <div className="flex gap-4">
+              {mode === 'edit' && (
+                <>
+                  <Button
+                    startIcon={<More />}
+                    variant="tertiary"
+                    size="L"
+                    ref={morePopoverRef}
+                    onClick={() => setOpenMorePopover(!openMorePopover)}
                   >
-                    <Flex direction="column">
-                      <PopoverItem
-                        role="button"
-                        onClick={() => setIsOpenUnpublishCampaignModal(true)}
-                        justifyContent="space-between"
-                        gap={6}
-                      >
-                        <Typography>Unpublish</Typography>
-                        <Pause />
-                      </PopoverItem>
-                      <PopoverItem
-                        justifyContent="space-between"
-                        role="button"
-                        style={{ width: '100%' }}
-                        onClick={() => setIsOpenArchiveCampaignModal(true)}
-                      >
-                        <Typography>Archive</Typography>
-                        <Archive />
-                      </PopoverItem>
-                    </Flex>
-                  </Popover>
-                )}
-              </>
-            )}
-            {mode === 'edit' && (
-              <CustomButton
-                disabled={mode === 'view'}
-                onClick={() => history.push(`/plugins/${pluginId}/campaigns/report/${campaignId}`)}
-              >
-                <Analytics stroke="#32324d" />
-                View Report
-              </CustomButton>
-            )}
-            {mode !== 'view' && (
-              <CustomButton onClick={() => handleCampaignSubmit('save')} disabled={mode === 'view'}>
-                <Save stroke="#32324d" />
-                Save
-              </CustomButton>
-            )}
-            {mode === 'create' && (
-              <Button
-                startIcon={<Rocket />}
-                onClick={() => setIsOpenCreateCampaignModal(true)}
-                variant="default"
-                size="L"
-                disabled={getSelectedAds(formAds).length === 0}
-              >
-                {getSelectedAds(formAds).length === 0
-                  ? 'Publish'
-                  : `Publish with ${getSelectedAds(formAds).length} Ads`}
-              </Button>
-            )}
+                    More
+                  </Button>
 
-            {mode === 'edit' && (
-              <Button
-                startIcon={<Rocket />}
-                // type="submit"
-                onClick={onSubmit}
-                variant="default"
-                size="L"
-                disabled={getSelectedAds(formAds).length === 0}
-              >
-                Save & Publish
-              </Button>
-            )}
+                  {openMorePopover && (
+                    <Popover
+                      source={morePopoverRef}
+                      placement="bottom"
+                      spacing={4}
+                      onDismiss={() => setOpenMorePopover(false)}
+                    >
+                      <Flex direction="column">
+                        <PopoverItem
+                          role="button"
+                          onClick={
+                            campaign?.campaign_status === 'inactive'
+                              ? undefined
+                              : () => setIsOpenUnpublishCampaignModal(true)
+                          }
+                          justifyContent="space-between"
+                          gap={6}
+                          className={campaign?.campaign_status === 'inactive' ? 'disabled' : ''}
+                        >
+                          <Typography>Unpublish</Typography>
+                          <Pause />
+                        </PopoverItem>
+                        <PopoverItem
+                          justifyContent="space-between"
+                          role="button"
+                          style={{ width: '100%' }}
+                          onClick={() => setIsOpenArchiveCampaignModal(true)}
+                        >
+                          <Typography>Archive</Typography>
+                          <Archive />
+                        </PopoverItem>
+                      </Flex>
+                    </Popover>
+                  )}
+                </>
+              )}
+              {mode === 'edit' && (
+                <CustomButton
+                  disabled={mode === 'view'}
+                  onClick={() =>
+                    history.push(`/plugins/${pluginId}/campaigns/report/${campaignId}`)
+                  }
+                >
+                  <Analytics stroke="#32324d" />
+                  View Report
+                </CustomButton>
+              )}
+              {mode !== 'view' && (
+                <CustomButton
+                  onClick={() => handleCampaignSubmit('save')}
+                  disabled={mode === 'view'}
+                >
+                  <Save stroke="#32324d" />
+                  Save
+                </CustomButton>
+              )}
+              {mode === 'create' && (
+                <Button
+                  startIcon={<Rocket />}
+                  onClick={async () => {
+                    const isValid = await validateForm();
+                    if (!isValid) return;
+                    setIsOpenCreateCampaignModal(true);
+                  }}
+                  variant="default"
+                  size="L"
+                  disabled={getSelectedAds(formAds).length === 0}
+                >
+                  {getSelectedAds(formAds).length === 0
+                    ? 'Publish'
+                    : `Publish with ${getSelectedAds(formAds).length} Ads`}
+                </Button>
+              )}
+
+              {mode === 'edit' && (
+                <Button
+                  startIcon={<Rocket />}
+                  onClick={async () => {
+                    const isValid = await validateForm();
+                    if (!isValid) return;
+                    setIsOpenEditCampaignModal(true);
+                  }}
+                  variant="default"
+                  size="L"
+                  disabled={getSelectedAds(formAds).length === 0}
+                >
+                  {campaign?.campaign_status === 'active' ? 'Unpublish' : 'Publish'}
+                </Button>
+              )}
+            </div>
           </div>
         </div>
 
@@ -850,13 +919,13 @@ const CampaignForm = ({
                                   onClick={(e) => {
                                     e.stopPropagation();
                                     e.preventDefault();
-                                    console.log('report');
+                                    history.push(`/plugins/${pluginId}/ads/report/${ad.id}`);
                                   }}
                                 >
                                   <Analytics stroke="#32324d" />
                                   Report
                                 </CustomButton>
-                                <CustomButton
+                                {/* <CustomButton
                                   onClick={(e) => {
                                     e.stopPropagation();
                                     e.preventDefault();
@@ -865,7 +934,7 @@ const CampaignForm = ({
                                 >
                                   <Edit stroke="#32324d" />
                                   Edit
-                                </CustomButton>
+                                </CustomButton> */}
                               </Flex>
                             )
                           }
@@ -896,7 +965,9 @@ const CampaignForm = ({
                                   />
                                 </Flex>
 
-                                <Typography>{formAds[idx]?.name || 'Ad Title Preview'}</Typography>
+                                <Typography>
+                                  {formAds[idx]?.ad_name || 'Ad Title Preview'}
+                                </Typography>
                               </Flex>
                             </Flex>
                           }
@@ -939,6 +1010,7 @@ const CampaignForm = ({
                               <Controller
                                 name={`ads.${idx}.ad_type`}
                                 control={methods.control}
+                                disabled={mode === 'view'}
                                 render={({ field }) => (
                                   <Flex gap={2} style={{ height: '184px' }}>
                                     {adTypes.map((adType) => (
@@ -959,7 +1031,10 @@ const CampaignForm = ({
                                         direction="column"
                                         justifyContent="space-between"
                                         alignItems="start"
-                                        onClick={() => field.onChange(adType.id)}
+                                        onClick={() => {
+                                          if (mode === 'view') return;
+                                          field.onChange(adType.id);
+                                        }}
                                         tabIndex={0}
                                         onKeyDown={(e) => {
                                           if (e.key === 'Enter' || e.key === ' ')
@@ -1032,6 +1107,7 @@ const CampaignForm = ({
                                             value={adSpot.id}
                                             checked={field.value === adSpot.id}
                                             onChange={() => field.onChange(adSpot.id)}
+                                            disabled={mode === 'view'}
                                           >
                                             {adSpot.ad_spot_display_text}
                                           </Radio>
@@ -1047,6 +1123,7 @@ const CampaignForm = ({
                                                       <Checkbox
                                                         key={screen.id}
                                                         value={screen.id}
+                                                        disabled={mode === 'view'}
                                                         checked={
                                                           Array.isArray(field.value) &&
                                                           field.value.includes(screen.id)
@@ -1078,6 +1155,15 @@ const CampaignForm = ({
                                             )}
                                         </Flex>
                                       ))}
+                                      {methods.formState.errors?.ads?.[idx]?.ad_spot?.message && (
+                                        <Typography
+                                          variant="pi"
+                                          textColor="danger600"
+                                          style={{ marginTop: '4px', fontSize: '12px' }}
+                                        >
+                                          {methods.formState.errors.ads[idx].ad_spot?.message}
+                                        </Typography>
+                                      )}
                                     </Flex>
                                   )}
                                 />
@@ -1143,7 +1229,11 @@ const CampaignForm = ({
                                     render={({ field }) => (
                                       <SingleSelect
                                         value={field.value ?? ''}
-                                        onChange={field.onChange}
+                                        onChange={(value) => {
+                                          field.onChange(value);
+                                          setActiveDestinationPage(1); // Reset page number
+                                          setActiveDestinationPageOptions([]); // Reset options array
+                                        }}
                                         disabled={mode === 'view'}
                                         placeholder="Select Destination Model"
                                       >
@@ -1197,17 +1287,18 @@ const CampaignForm = ({
                                             {option?.name}
                                           </SingleSelectOption>
                                         ))}
-                                        {mode !== 'view' && activeDestinationPage < totalPages && (
-                                          <Button
-                                            style={{ width: '100%' }}
-                                            variant="tertiary"
-                                            onClick={() =>
-                                              setActiveDestinationPage((prev) => prev + 1)
-                                            }
-                                          >
-                                            Load More
-                                          </Button>
-                                        )}
+                                        {mode !== 'view' &&
+                                          activeDestinationPage < totalDestinationPageOptions && (
+                                            <Button
+                                              style={{ width: '100%' }}
+                                              variant="tertiary"
+                                              onClick={() =>
+                                                setActiveDestinationPage((prev) => prev + 1)
+                                              }
+                                            >
+                                              Load More
+                                            </Button>
+                                          )}
                                       </SingleSelect>
                                     );
                                   }}
@@ -1226,7 +1317,16 @@ const CampaignForm = ({
                             <TabGroup>
                               <Tabs style={{ marginBottom: '16px', width: '15rem' }}>
                                 <TabButton>
-                                  <Button variant="tertiary" size="L" style={{ width: '100%' }}>
+                                  <Button
+                                    variant="tertiary"
+                                    size="L"
+                                    style={{
+                                      width: '100%',
+                                      display: 'flex',
+                                      justifyContent: 'center',
+                                      alignItems: 'center',
+                                    }}
+                                  >
                                     <Typography
                                       variant="pi"
                                       fontWeight="bold"
@@ -1237,7 +1337,16 @@ const CampaignForm = ({
                                   </Button>
                                 </TabButton>
                                 <TabButton>
-                                  <Button variant="tertiary" size="L" style={{ width: '100%' }}>
+                                  <Button
+                                    variant="tertiary"
+                                    size="L"
+                                    style={{
+                                      width: '100%',
+                                      display: 'flex',
+                                      justifyContent: 'center',
+                                      alignItems: 'center',
+                                    }}
+                                  >
                                     <Typography
                                       variant="pi"
                                       fontWeight="bold"
@@ -1310,16 +1419,43 @@ const CampaignForm = ({
             direction="column"
             as="aside"
             padding="20px"
-            className="flex-1 gap-5"
+            className="flex-1 gap-5 relative"
           >
             {/*
              ********** AD PREVIEW SECTION **********
              */}
-            <div className="items-center justify-center py-16 flex flex-col bg-card-color border border-border-form rounded-md">
-              <Typography variant="omega" fontWeight="bold" className="mb-5 text-label">
-                Ad Preview
-              </Typography>
-              <div className="relative">
+            <div
+              ref={imgRef}
+              className="  items-center justify-center py-16 flex flex-col bg-card-color border border-border-form rounded-md"
+            >
+              <div className="w-full px-5">
+                <Flex direction="column" justifyContent="space-between" alignItems="center">
+                  <Typography variant="omega" fontWeight="bold" className="mb-5 text-label">
+                    Ad Preview
+                  </Typography>
+                  <Typography
+                    textColor="neutral500"
+                    variant="pi"
+                    fontWeight="bold"
+                    className="text-label"
+                  >
+                    Select AD to preview
+                  </Typography>
+                </Flex>
+                {methods.getValues(`ads.${activeAdIdx}.ad_image`) && (
+                  <Download
+                    onClick={() =>
+                      downloadPdf(
+                        imgRef,
+                        `${methods.getValues(`ads.${activeAdIdx}.ad_name`)}-preview.pdf`
+                      )
+                    }
+                    style={{ top: '25px', right: '25px' }}
+                    className="absolute  cursor-pointer"
+                  />
+                )}
+              </div>
+              <div className="relative mt-5">
                 <img
                   src={iphoneFrame}
                   alt="Ad Preview"
@@ -1343,9 +1479,12 @@ const CampaignForm = ({
                           : (methods.getValues(`ads.${activeAdIdx}.ad_image_url`) ?? emptyImage)
                       }
                       alt=""
-                      className="absolute inset-0 size-full object-cover object-center -z-10 rounded-3xl "
+                      className="absolute inset-0 size-full object-cover object-center z-1 rounded-3xl "
                     />
-                    <div className="absolute rounded-3xl bottom-0 w-full h-[35%] bg-gradient-to-t from-black/70 via-black/10 to-transparent backdrop-blur-md z-10" />
+                    {methods.getValues(`ads.${activeAdIdx}.ad_image`) && (
+                      <></>
+                      // <div className="absolute rounded-3xl bottom-0 w-full h-[35%] bg-gradient-to-t from-black/70 via-black/10 to-transparent backdrop-blur-md z-10" />
+                    )}
                     <div
                       style={{
                         // marginBottom: '0.2rem',
@@ -1385,6 +1524,16 @@ const CampaignForm = ({
                   </div>
                 </div>
               </div>
+              <Typography
+                textColor="neutral500"
+                variant="pi"
+                fontWeight="bold"
+                className="mt-5 text-label"
+              >
+                {methods.getValues(`ads.${activeAdIdx}.ad_image`)
+                  ? `${methods.getValues(`ads.${activeAdIdx}.ad_name`)} - Large : 375x600`
+                  : 'Ad Name - Ad Size'}
+              </Typography>
             </div>
           </Flex>
         </Flex>

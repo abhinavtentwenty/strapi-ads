@@ -12,7 +12,8 @@ const DashboardCard = ({ data }) => {
       hasRadius
       shadow="tableShadow"
       padding={4}
-      className="flex flex-col gap-2.5"
+      style={{ minHeight: 128 }}
+      className="flex flex-col gap-2.5 size-full"
     >
       <Flex justifyContent="space-between" alignItems="unset">
         <Typography variant="pi" textColor="neutral500" fontWeight="bold" textTransform="uppercase">
@@ -21,15 +22,16 @@ const DashboardCard = ({ data }) => {
       </Flex>
       <Typography variant="alpha" fontWeight="bold" as="p">
         {data.total}
+        {data?.type === 'ctr' ? '%' : ''}
       </Typography>
       {showDelta && (
         <Typography
-          variant="delta"
+          variant="omega"
           fontWeight="bold"
           textColor={isPositive ? 'success500' : 'danger500'}
           textTransform="uppercase"
         >
-          {`${data.delta} ${data.text}`}
+          {`${isPositive ? '+' : ''}${data.delta} ${data.text}`}
         </Typography>
       )}
     </GridItem>

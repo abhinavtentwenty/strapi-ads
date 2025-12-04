@@ -11,7 +11,7 @@ const name = pluginPkg.strapi.name;
 const CustomPluginIcon = () => (
   <span style={{ position: 'relative', display: 'inline-block' }}>
     <CampaignIcon />
-    <span
+    {/* <span
       style={{
         position: 'absolute',
         top: -10,
@@ -28,55 +28,19 @@ const CustomPluginIcon = () => (
       }}
     >
       {5}
-    </span>
+    </span> */}
   </span>
 );
 
 const CustomAdManagementIcon = () => (
   <span style={{ position: 'relative', display: 'inline-block' }}>
     <AdManagementIcon />
-    <span
-      style={{
-        position: 'absolute',
-        top: -10,
-        right: -13,
-        background: '#4945ff',
-        color: '#fff',
-        borderRadius: '50%',
-        fontSize: '10px',
-        padding: '2px 5px',
-        minWidth: '16px',
-        textAlign: 'center',
-        fontWeight: 'bold',
-        lineHeight: 1,
-      }}
-    >
-      {5}
-    </span>
   </span>
 );
 
 const CustomAnalyticsIcon = () => (
   <span style={{ position: 'relative', display: 'inline-block' }}>
     <AnalyticsIcon />
-    <span
-      style={{
-        position: 'absolute',
-        top: -10,
-        right: -13,
-        background: '#4945ff',
-        color: '#fff',
-        borderRadius: '50%',
-        fontSize: '10px',
-        padding: '2px 5px',
-        minWidth: '16px',
-        textAlign: 'center',
-        fontWeight: 'bold',
-        lineHeight: 1,
-      }}
-    >
-      3
-    </span>
   </span>
 );
 

@@ -4,12 +4,13 @@ const _ = require('lodash');
 
 module.exports = ({ strapi }) => ({
   async find(ctx) {
-    const { filters = {}, pagination = {}, populate = {} } = ctx.request.query;
+    const { filters = {}, pagination = {}, populate = {}, sort = {} } = ctx.request.query;
 
     const campaigns = await strapi.service('plugin::strapi-ads.campaign').find({
       filters: { ...filters },
       populate,
       pagination,
+      sort,
     });
 
     return campaigns;
@@ -20,7 +21,7 @@ module.exports = ({ strapi }) => ({
     const campaign = await strapi.db.query('plugin::strapi-ads.campaign').findOne({
       where: { id: id },
       populate: {
-        ads: { populate: { ad_type: true, ad_screens: true, ad_spot: true } },
+        ads: { populate: { ad_type: true, ad_screens: true, ad_spot: true, ad_image: true } },
         ...populate,
       },
     });

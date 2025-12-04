@@ -8,7 +8,7 @@ import React from 'react';
 const useDestinationPages = ({ destinationModel, page = 1, pageSize = 10, paginated = true }) => {
   const { get } = useFetchClient();
 
-  console.log('useDestinationPages called with', { destinationModel, page, pageSize, paginated });
+  // console.log('useDestinationPages called with', { destinationModel, page, pageSize, paginated });
 
   const query = qs.stringify(
     {
@@ -28,7 +28,7 @@ const useDestinationPages = ({ destinationModel, page = 1, pageSize = 10, pagina
       : null
   );
 
-  console.log('useDestinationPages data', data);
+  // console.log('useDestinationPages data', data);
   return {
     destinationPages: data?.data?.results || [],
     totalPages: data?.data?.pagination?.total || 0,
