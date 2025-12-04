@@ -28,7 +28,7 @@ import CustomBadge from '../../components/elements/badge';
 import StatusBadge from '../../components/elements/statusBadge';
 import useAdModuleStats from '../../components/hooks/useAdModuleStats';
 
-const ListView = ({ paginatedCampaigns, handleSortChange, sort }) => {
+const ListView = ({ paginatedCampaigns, handleSortChange, sort, isLoading }) => {
   const history = useHistory();
   const { stats } = useAdModuleStats();
 
@@ -206,6 +206,8 @@ const ListView = ({ paginatedCampaigns, handleSortChange, sort }) => {
                 </Td>
               </Tr>
             ))
+          ) : isLoading ? (
+            <></>
           ) : (
             <Tr>
               <Td colSpan={7}>

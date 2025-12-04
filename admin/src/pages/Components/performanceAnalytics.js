@@ -8,11 +8,11 @@ import { format, parseISO } from 'date-fns';
 const chartConfig = {
   impressions: {
     label: 'Impressions',
-    color: 'var(--chart-1)',
+    color: '#F93E00',
   },
   clicks: {
     label: 'Clicks',
-    color: 'var(--chart-2)',
+    color: '#008B7E',
   },
 };
 
@@ -28,6 +28,16 @@ const formatChartData = (apiData) => {
 const PerformanceAnalytics = ({ data }) => {
   const theme = useTheme();
   const chartData = formatChartData(data);
+
+  if (!chartData.length) {
+    return (
+      <ChartContainer className="h-[350px] w-full" config={chartConfig}>
+        <div className="flex items-center justify-center h-full text-neutral500">
+          No analytics data available
+        </div>
+      </ChartContainer>
+    );
+  }
   return (
     <ChartContainer className="h-[350px] w-full" config={chartConfig}>
       <AreaChart

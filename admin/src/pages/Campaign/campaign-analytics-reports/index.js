@@ -72,7 +72,13 @@ const CampaignAnalyticsReport = () => {
           </Breadcrumb>
         </Flex>
         <Flex gap={2}>
-          <Button variant="tertiary" onClick={(e) => {}} size="L">
+          <Button
+            variant="tertiary"
+            onClick={(e) => {
+              history.push('campaigns');
+            }}
+            size="L"
+          >
             View Campaign details
           </Button>
           <Button

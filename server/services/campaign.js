@@ -146,7 +146,7 @@ module.exports = createCoreService('plugin::strapi-ads.campaign', ({ strapi }) =
     const statDate = date || format(subDays(new Date(), 1), 'yyyy-MM-dd');
     const dayBefore = format(subDays(new Date(statDate), 1), 'yyyy-MM-dd');
 
-    const limit = 1;
+    const limit = 100;
     let offset = 0;
     let hasMore = true;
     const campaignAgg = {};

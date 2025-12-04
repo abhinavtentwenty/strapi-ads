@@ -111,14 +111,14 @@ const CampaignReport = () => {
             Overall Campaign Stats
           </Typography>
           <Flex gap={3} wrap="wrap" alignItems="center">
-            <MultiSelect value={status} onChange={(value) => setStatus(value)} size="S">
+            {/* <MultiSelect value={status} onChange={(value) => setStatus(value)} size="S">
               {AD_STATUS_OPTIONS.map((status) => (
                 <MultiSelectOption key={status.value} value={status.value}>
                   {status.label}
                 </MultiSelectOption>
               ))}
-            </MultiSelect>
-            <SingleSelect value={type} onChange={(value) => setType(String(value))} size="S">
+            </MultiSelect> */}
+            {/* <SingleSelect value={type} onChange={(value) => setType(String(value))} size="S">
               <SingleSelectOption key={0} value="">
                 All Types
               </SingleSelectOption>
@@ -127,7 +127,7 @@ const CampaignReport = () => {
                   {type?.title}
                 </SingleSelectOption>
               ))}
-            </SingleSelect>
+            </SingleSelect> */}
             <SingleSelect
               value={dateRange}
               onChange={(value) => setDateRange(String(value))}

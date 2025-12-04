@@ -30,7 +30,7 @@ const useCampaigns = ({
           createdAt: { $gte: timeframeDate.toISOString() },
         }),
       },
-      sort: `${sort?.field}:${sort?.order}`,
+      sort: sort ? `${sort?.field}:${sort?.order}` : undefined,
 
       populate: {
         campaign_status: true,

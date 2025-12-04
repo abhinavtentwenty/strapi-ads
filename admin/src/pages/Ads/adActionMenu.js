@@ -106,7 +106,7 @@ const AdActionMenu = ({ data }) => {
               <Typography>Unpublished</Typography>
               <Pause />
             </PopoverItemButton>
-            <PopoverItemButton onClick={handleArchive}>
+            <PopoverItemButton disabled={data?.ad_status === 'archived'} onClick={handleArchive}>
               <Typography>Archive</Typography>
               <Archive />
             </PopoverItemButton>

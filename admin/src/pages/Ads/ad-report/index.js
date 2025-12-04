@@ -179,14 +179,14 @@ const AdReport = () => {
             )}
           </>
 
-          <CustomButton onClick={() => {}}>
+          {/* <CustomButton onClick={() => {}}>
             <Analytics stroke="#32324d" />
             View Report
-          </CustomButton>
-          <CustomButton onClick={() => history.push('ad-report')}>
+          </CustomButton> */}
+          {/* <CustomButton onClick={() => history.push('ad-report')}>
             <Save stroke="#32324d" />
             Save
-          </CustomButton>
+          </CustomButton> */}
 
           <CustomButton onClick={() => downloadPdf(pdfRef, `${ad?.ad_name}-report.pdf`)}>
             <Download stroke="#32324d" />
@@ -216,14 +216,14 @@ const AdReport = () => {
             Overall Campaign Stats
           </Typography>
           <Flex gap={3} wrap="wrap" alignItems="center">
-            <MultiSelect value={status} onChange={(value) => setStatus(value)} size="S">
+            {/* <MultiSelect value={status} onChange={(value) => setStatus(value)} size="S">
               {AD_STATUS_OPTIONS.map((status) => (
                 <MultiSelectOption key={status.value} value={status.value}>
                   {status.label}
                 </MultiSelectOption>
               ))}
-            </MultiSelect>
-            <SingleSelect value={type} onChange={(value) => setType(String(value))} size="S">
+            </MultiSelect> */}
+            {/* <SingleSelect value={type} onChange={(value) => setType(String(value))} size="S">
               <SingleSelectOption key={0} value="">
                 All Types
               </SingleSelectOption>
@@ -232,7 +232,7 @@ const AdReport = () => {
                   {type?.title}
                 </SingleSelectOption>
               ))}
-            </SingleSelect>
+            </SingleSelect> */}
             <SingleSelect
               value={dateRange}
               onChange={(value) => setDateRange(String(value))}

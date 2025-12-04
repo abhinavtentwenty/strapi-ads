@@ -27,6 +27,16 @@ const formatCTRChartData = (apiData) => {
 const ClickThroughRateTrend = ({ data }) => {
   const theme = useTheme();
   const chartData = formatCTRChartData(data);
+
+  if (!chartData.length) {
+    return (
+      <ChartContainer className="h-[350px] w-full" config={chartConfig}>
+        <div className="flex items-center justify-center h-full text-neutral500">
+          No analytics data available
+        </div>
+      </ChartContainer>
+    );
+  }
   return (
     <ChartContainer className="h-[350px] w-full" config={chartConfig}>
       <AreaChart

@@ -59,7 +59,7 @@ const AdList = () => {
 
   const [sort, setSort] = useState({ field: 'ad_name', order: 'ASC' });
 
-  const { ads, pagination } = useAds({
+  const { ads, pagination, isLoading } = useAds({
     page,
     pageSize,
     status,
@@ -348,10 +348,10 @@ const AdList = () => {
             </Tr>
           </Thead>
           <Tbody>
-            {ads.length > 0 &&
+            {ads.length > 0 ? (
               ads.map((ad, idx) => (
                 <Tr key={idx}>
-                  {/* Campaign name and ID */}
+                  /* Campaign name and ID */
                   <Td className={TdStyles}>
                     <div
                       className="flex items-center gap-2"
@@ -360,8 +360,8 @@ const AdList = () => {
                       }}
                     >
                       <img
-                        src="http://localhost:1332/uploads/thumbnail_Image_created_with_a_mobile_phone_de0a0f8e42.png"
-                        // alt={feature.name}
+                        src={ad?.ad_image?.url}
+                        alt={ad?.ad_name}
                         style={{ width: 44, height: 44, borderRadius: 6 }}
                       />
                       <div className="flex flex-col gap-1">
@@ -384,13 +384,11 @@ const AdList = () => {
                     {ad?.ad_start_date ? format(new Date(ad?.ad_start_date), 'dd/MM/yyyy') : ''} -{' '}
                     {ad?.ad_end_date ? format(new Date(ad?.ad_end_date), 'dd/MM/yyyy') : ''}
                   </Td>
-
                   <Td className={TdStyles}>
                     <StatusBadge
                       status={ad?.campaign?.campaign_status === 'draft' ? 'draft' : ad?.ad_status}
                     />
                   </Td>
-
                   <Td className={TdStyles}>
                     <Typography as="span" variant="epsilon">
                       {ad?.campaign?.campaign_name || ''}
@@ -434,7 +432,21 @@ const AdList = () => {
                     </Flex>
                   </Td>
                 </Tr>
-              ))}
+              ))
+            ) : isLoading ? (
+              <></>
+            ) : (
+              <Tr>
+                <Td colSpan={7}>
+                  <div
+                    style={{ height: '50vh' }}
+                    className="flex flex-col gap-4 items-center justify-center"
+                  >
+                    <div className="text-gray-500 text-lg">No ads found</div>
+                  </div>
+                </Td>
+              </Tr>
+            )}
           </Tbody>
         </Table>
       </Box>

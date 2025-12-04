@@ -109,7 +109,10 @@ const ActionMenu = ({ data }) => {
               <Typography>Unpublished</Typography>
               <Pause />
             </PopoverItemButton>
-            <PopoverItemButton onClick={handleArchive}>
+            <PopoverItemButton
+              disabled={data?.campaign_status === 'archived'}
+              onClick={handleArchive}
+            >
               <Typography>Archive</Typography>
               <Archive />
             </PopoverItemButton>

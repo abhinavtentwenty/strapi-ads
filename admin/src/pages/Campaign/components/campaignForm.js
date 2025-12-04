@@ -458,6 +458,7 @@ const CampaignForm = ({
   const handleCampaignSubmit = async (type) => {
     // type: 'publish' | 'save'
     try {
+      methods.clearErrors();
       const isValid = await validateForm();
       if (!isValid) return;
 
@@ -545,6 +546,9 @@ const CampaignForm = ({
           background: '#eafbe7',
         },
       });
+      setIsOpenEditCampaignModal(false);
+      setIsOpenCreateCampaignModal(false);
+      setOpenAdDurationOverlapModal(false);
     } catch (error) {
       console.error('Error creating campaign:', error);
     }
@@ -602,7 +606,7 @@ const CampaignForm = ({
             padding: '16px 0',
             position: 'sticky',
             top: 0,
-            zIndex: 100, // adjust as needed
+            zIndex: 5, // adjust as needed
             background: '#f6f6f9', // recommended to avoid transparency issues
           }}
         >
@@ -676,6 +680,7 @@ const CampaignForm = ({
                           justifyContent="space-between"
                           role="button"
                           style={{ width: '100%' }}
+                          className={campaign?.campaign_status === 'archived' ? 'disabled' : ''}
                           onClick={() => setIsOpenArchiveCampaignModal(true)}
                         >
                           <Typography>Archive</Typography>
@@ -1424,10 +1429,7 @@ const CampaignForm = ({
             {/*
              ********** AD PREVIEW SECTION **********
              */}
-            <div
-              ref={imgRef}
-              className="  items-center justify-center py-16 flex flex-col bg-card-color border border-border-form rounded-md"
-            >
+            <div className="  items-center justify-center py-16 flex flex-col bg-card-color border border-border-form rounded-md">
               <div className="w-full px-5">
                 <Flex direction="column" justifyContent="space-between" alignItems="center">
                   <Typography variant="omega" fontWeight="bold" className="mb-5 text-label">
@@ -1455,7 +1457,7 @@ const CampaignForm = ({
                   />
                 )}
               </div>
-              <div className="relative mt-5">
+              <div ref={imgRef} className="relative mt-5">
                 <img
                   src={iphoneFrame}
                   alt="Ad Preview"
@@ -1481,13 +1483,26 @@ const CampaignForm = ({
                       alt=""
                       className="absolute inset-0 size-full object-cover object-center z-1 rounded-3xl "
                     />
-                    {methods.getValues(`ads.${activeAdIdx}.ad_image`) && (
-                      <></>
-                      // <div className="absolute rounded-3xl bottom-0 w-full h-[35%] bg-gradient-to-t from-black/70 via-black/10 to-transparent backdrop-blur-md z-10" />
+                    {(methods.getValues(`ads.${activeAdIdx}.ad_image`) ||
+                      methods.getValues(`ads.${activeAdIdx}.ad_image_url`)) && (
+                      <div
+                        style={{
+                          position: 'absolute',
+                          borderRadius: '1.5rem',
+                          bottom: 0,
+                          left: 0,
+                          maskImage: 'linear-gradient(transparent, black, black)',
+                          width: '100%',
+                          height: '60%',
+                          background:
+                            'linear-gradient(to bottom, rgba(0, 0, 0, 0.05), rgba(0, 0, 0, 0.5))',
+                          backdropFilter: 'blur(21px)',
+                          zIndex: 0,
+                        }}
+                      />
                     )}
                     <div
                       style={{
-                        // marginBottom: '0.2rem',
                         padding: '0.5rem',
                       }}
                       className="flex flex-col gap-1 px-6 z-20 w-full "

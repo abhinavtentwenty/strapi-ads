@@ -266,6 +266,7 @@ const Dashboard = () => {
               <ListView
                 paginatedCampaigns={paginatedCampaigns}
                 handleSortChange={handleSortChange}
+                isLoading={isLoading}
                 sort={sort}
               />
             </TabPanel>
