@@ -18,13 +18,13 @@ module.exports = createCoreService(modelName, ({ strapi }) => ({
   async duplicate(ctx) {
     const { id } = ctx.params;
     const originalAd = await strapi.entityService.findOne('plugin::strapi-ads.ad', id, {
-      populate: ['ad_status', 'ad_image', 'campaign'],
+      populate: "*",
     });
     if (!originalAd) {
       ctx.throw(404, 'Ad not found');
     }
     let { ad_image, campaign, ...adData } = originalAd;
-    adData = deepOmit(adData, ['id', 'createdAt', 'updatedAt', 'publishedAt']);
+    adData = _.omit(adData, ['id', 'createdAt', 'updatedAt', 'publishedAt','createdBy', 'updatedBy', 'total_impressions', 'total_clicks']);
     adData.ad_name = `${adData.ad_name} (Copy)-${new Date().getTime()}`;
     adData.ad_id = await strapi.service('plugin::content-manager.uid').generateUIDField({
       contentTypeUID: 'plugin::strapi-ads.ad',
@@ -156,7 +156,7 @@ module.exports = createCoreService(modelName, ({ strapi }) => ({
 
   async getDestinationPage(ctx) {
     const { ad_destination_model } = ctx.request.params;
-    const { pagination = {}, filters = {} } = ctx.request.query;
+    const { pagination = {}, filters = {}, _q = null } = ctx.request.query;
 
     const destinationModels = strapi.plugin('strapi-ads').config('destinationModelConfig');
 
@@ -166,14 +166,30 @@ module.exports = createCoreService(modelName, ({ strapi }) => ({
       ctx.throw(400, 'Invalid destination model');
     }
 
+    const searchFilter = _q && destination.fields && destination.fields.length
+        ? {
+          $or: destination.fields.map(field => ({
+            [field]: { $containsi: _q }
+          }))
+        }
+        : {};
+
     const pages = await strapi.service(destination.model).find({
-      filters: { ...destination.filters, ...filters },
+      filters: { ...destination.filters, ...filters, ...searchFilter },
       fields: destination.fields ? destination.fields : undefined,
       pagination: { pageSize: 10, ...pagination },
       sort: { ...destination.sort },
     });
 
-    return pages;
+    const resultsWithTitle = pages.results.map((page) => ({
+      ...page,
+      title: destination.fields ? page[destination.fields[0]] : 'Configure title field',
+    }));
+
+    return {
+      ...pages,
+      results: resultsWithTitle,
+    };
   },
 
   async generateAdsReport(ctx) {
@@ -202,7 +218,7 @@ module.exports = createCoreService(modelName, ({ strapi }) => ({
           'total_clicks',
         ],
         populate: { campaign: { fields: ['campaign_name'] }, ad_type: { fields: ['title'] } },
-        filters,
+        where: filters,
         limit,
         offset,
       });
@@ -249,5 +265,16 @@ module.exports = createCoreService(modelName, ({ strapi }) => ({
 
   async downloadAdsReport(ctx) {
     await download(ctx);
+  },
+
+  async getDestinationModel(ctx) {
+    const destinationModels = strapi.plugin('strapi-ads').config('destinationModelConfig');
+
+    return Object.keys(destinationModels)
+      .map((key) => ({
+        key: key,
+        label: destinationModels[key].label,
+      }))
+      .sort((a, b) => a.label.localeCompare(b.label));
   },
 }));

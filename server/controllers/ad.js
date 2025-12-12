@@ -72,6 +72,15 @@ module.exports = createCoreController(modelName, ({ strapi }) => ({
         }
     },
 
+    async getDestinationModel(ctx){
+        try{
+            return strapi.plugin('strapi-ads').service('ad').getDestinationModel(ctx);
+        }catch(e){
+            console.error(e);
+            return e;
+        }
+    },
+
     async downloadAdsReport(ctx){
         try{
             await strapi.plugin('strapi-ads').service('ad').downloadAdsReport(ctx);

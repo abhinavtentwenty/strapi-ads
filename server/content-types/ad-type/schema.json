@@ -7,33 +7,20 @@
     "displayName": "Ad Type",
     "description": ""
   },
-  "options": {
-    "draftAndPublish": true
-  },
+  "options": { "draftAndPublish": true },
   "pluginOptions": {},
   "attributes": {
     "thumbnail": {
       "type": "media",
       "multiple": true,
       "required": false,
-      "allowedTypes": [
-        "images"
-      ]
+      "allowedTypes": ["images"]
     },
-    "title": {
-      "type": "string"
-    },
-    "description": {
-      "type": "text"
-    },
-    "allow_video": {
-      "type": "boolean",
-      "default": false
-    },
-    "ad_type_id": {
-      "type": "uid",
-      "targetField": "title"
-    },
+    "title": { "type": "string" },
+    "description": { "type": "text" },
+    "allow_video": { "type": "boolean", "default": false },
+    "ad_type_id": { "type": "uid", "targetField": "title" },
+    "image_size": { "type": "json" },
     "ad_spots": {
       "type": "relation",
       "relation": "manyToMany",

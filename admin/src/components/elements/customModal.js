@@ -1,11 +1,27 @@
+import { Button, ModalBody, ModalFooter, ModalHeader, ModalLayout } from '@strapi/design-system';
 import * as React from 'react';
-import { Button, ModalLayout, ModalHeader, ModalBody, ModalFooter } from '@strapi/design-system';
+import styled from 'styled-components';
 
-export default function CustomModal({ isOpen, setIsOpen, onSubmit, children, label }) {
+const HighZIndexModal = styled(ModalLayout)`
+  & > div {
+    /* ModalWrapper */
+    z-index: 9999 !important;
+  }
+`;
+
+export default function CustomModal({
+  isOpen,
+  setIsOpen,
+  onSubmit,
+  children,
+  label,
+  disabled = false,
+  endActionOkayLabel = false,
+}) {
   return (
     <>
       {isOpen && (
-        <ModalLayout
+        <HighZIndexModal
           width="32rem"
           maxWidth="90%"
           onClose={() => setIsOpen(false)}
@@ -24,12 +40,12 @@ export default function CustomModal({ isOpen, setIsOpen, onSubmit, children, lab
               </Button>
             }
             endActions={
-              <Button variant="primary" onClick={onSubmit}>
-                Confirm
+              <Button disabled={disabled} variant="primary" onClick={onSubmit}>
+                {endActionOkayLabel ? 'Okay' : 'Confirm'}
               </Button>
             }
           />
-        </ModalLayout>
+        </HighZIndexModal>
       )}
     </>
   );

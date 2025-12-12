@@ -9,6 +9,7 @@ const Badge = styled.span`
   font-weight: 500;
   border-radius: 6px;
   text-transform: uppercase;
+  white-space: nowrap;
   background: ${({ variant }) =>
     variant === 'active' || variant === 'live'
       ? '#eafbe7'

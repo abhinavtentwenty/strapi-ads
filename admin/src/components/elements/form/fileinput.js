@@ -1,15 +1,62 @@
 //@ts-nocheck
-import React from 'react';
+import React, { useState } from 'react';
 import { useDropzone } from 'react-dropzone';
 import { Box, Flex, Typography, IconButton } from '@strapi/design-system';
-import { Trash, Pencil } from '@strapi/icons';
+import { Trash } from '@strapi/icons';
 import { Controller, useFormContext } from 'react-hook-form';
 import addImage from '../../../assets/addImage.png';
+import { validateImageSize } from '../../../config/adValidationRules';
 
-const FileUpload = ({ name, disabled, adImageUrl }) => {
-  const { control, setValue, watch } = useFormContext();
+const ALLOWED_IMAGE_FORMATS = {
+  'image/jpeg': ['.jpg', '.jpeg'],
+  'image/png': ['.png'],
+  'image/webp': ['.webp'],
+};
+
+const FileUpload = ({ name, disabled, adImageUrl, activeAdTypeId, adTypes, error }) => {
+  const { control, setValue, watch, clearErrors } = useFormContext();
+  const [imageError, setImageError] = useState(null);
+  const [isValidating, setIsValidating] = useState(false);
 
   const imgUrl = watch(adImageUrl);
+
+  // Get the ad type details to show required size
+  const adType = adTypes?.find((type) => type.id === activeAdTypeId);
+  const requiredSize = adType?.image_size;
+
+  const validateAndSetImage = async (file) => {
+    if (!file) return;
+
+    // Check if ad type is selected
+    if (!adType?.ad_type_id) {
+      setImageError('Please select an ad type before uploading an image');
+      return false;
+    }
+
+    // Check file format
+    if (!Object.keys(ALLOWED_IMAGE_FORMATS).includes(file.type)) {
+      setImageError('Only JPG, PNG, and WebP formats are allowed');
+      return false;
+    }
+
+    setIsValidating(true);
+    setImageError(null);
+
+    // Validate image size with 5% aspect ratio tolerance
+    const validation = await validateImageSize(file, adType, 0.05);
+    setIsValidating(false);
+
+    if (!validation.valid) {
+      setImageError(validation.error);
+      return false;
+    }
+
+    setImageError(null);
+    return true;
+  };
+
+  // Determine which error to show (image validation error takes priority when user tries to upload)
+  const displayError = imageError || error;
 
   return (
     <Controller
@@ -19,23 +66,43 @@ const FileUpload = ({ name, disabled, adImageUrl }) => {
       render={({ field: { value, onChange } }) => {
         const file = value || null;
 
-        const onDrop = (acceptedFiles) => {
+        const onDrop = async (acceptedFiles, rejectedFiles) => {
           if (disabled) return;
-          onChange(acceptedFiles[0]);
-          setValue(adImageUrl, null);
+
+          // Handle rejected files (wrong format)
+          if (rejectedFiles.length > 0) {
+            const rejection = rejectedFiles[0];
+            if (rejection.errors.some((e) => e.code === 'file-invalid-type')) {
+              setImageError('Only JPG, PNG, and WebP formats are allowed');
+            }
+            return;
+          }
+
+          const selectedFile = acceptedFiles[0];
+          if (!selectedFile) return;
+
+          // Clear form validation error when user attempts upload
+          clearErrors(name);
+
+          const isValid = await validateAndSetImage(selectedFile);
+          if (isValid) {
+            onChange(selectedFile);
+            setValue(adImageUrl, null);
+          }
         };
 
         const handleRemoveFile = () => {
           if (disabled) return;
           onChange(null);
           setValue(adImageUrl, null);
+          setImageError(null);
         };
 
         const { getRootProps, getInputProps, isDragActive } = useDropzone({
           onDrop,
-          accept: { 'image/*': [] },
+          accept: ALLOWED_IMAGE_FORMATS,
           multiple: false,
-          disabled,
+          disabled: disabled || !adType?.ad_type_id || isValidating,
         });
 
         const showDropzone = !file && !imgUrl;
@@ -43,7 +110,14 @@ const FileUpload = ({ name, disabled, adImageUrl }) => {
         return (
           <Box>
             <Typography variant="pi" fontWeight="bold" textColor="neutral800">
-              Upload Image
+              Upload Image*
+              {requiredSize && (
+                <span>
+                  {' '}
+                  (Minimum: {requiredSize.width}x{requiredSize.height}px, Aspect Ratio:{' '}
+                  {(requiredSize.width / requiredSize.height).toFixed(2)})
+                </span>
+              )}
             </Typography>
             {showDropzone && (
               <Box
@@ -52,17 +126,20 @@ const FileUpload = ({ name, disabled, adImageUrl }) => {
                 borderColor="neutral200"
                 hasRadius
                 style={{
-                  border: '2px solid #dcdce4',
-                  opacity: disabled ? 0.5 : 1,
-                  pointerEvents: disabled ? 'none' : 'auto',
+                  border: displayError ? '2px solid #d02b20' : '2px solid #dcdce4',
+                  opacity: disabled || !adType?.ad_type_id ? 0.5 : 1,
+                  pointerEvents: disabled || !adType?.ad_type_id || isValidating ? 'none' : 'auto',
                   background: disabled ? '#f6f6f9' : undefined,
-                  cursor: disabled ? 'not-allowed' : 'pointer',
+                  cursor: disabled || !adType?.ad_type_id ? 'not-allowed' : 'pointer',
                 }}
                 background="neutral100"
                 role="button"
                 {...getRootProps()}
               >
-                <input {...getInputProps()} disabled={disabled} />
+                <input
+                  {...getInputProps()}
+                  disabled={disabled || !adType?.ad_type_id || isValidating}
+                />
                 <Flex direction="column" alignItems="center" justifyContent="center" gap={2}>
                   <img style={{ width: '30px' }} src={addImage} alt="Add" />
                   <Typography
@@ -71,9 +148,11 @@ const FileUpload = ({ name, disabled, adImageUrl }) => {
                     textAlign="center"
                     style={{ fontSize: '12px' }}
                   >
-                    {isDragActive
-                      ? 'Drag and drop in this area.'
-                      : 'Click to select an image or drag and drop here'}
+                    {isValidating
+                      ? 'Validating image...'
+                      : isDragActive
+                        ? 'Drag and drop in this area.'
+                        : 'Click to select an image or drag and drop here'}
                   </Typography>
                 </Flex>
               </Box>
@@ -106,10 +185,7 @@ const FileUpload = ({ name, disabled, adImageUrl }) => {
                         borderRadius: '8px',
                       }}
                     />
-                    <Flex gap="3" style={{ position: 'absolute', bottom: 5, right: 40 }}>
-                      <IconButton aria-label="Edit file" disabled={disabled}>
-                        <Pencil />
-                      </IconButton>
+                    <Flex gap="3" style={{ position: 'absolute', bottom: 5, right: 60 }}>
                       <IconButton
                         aria-label="Remove file"
                         onClick={handleRemoveFile}
@@ -147,10 +223,7 @@ const FileUpload = ({ name, disabled, adImageUrl }) => {
                         borderRadius: '8px',
                       }}
                     />
-                    <Flex gap="3" style={{ position: 'absolute', bottom: 5, right: 40 }}>
-                      <IconButton aria-label="Edit file" disabled={disabled}>
-                        <Pencil />
-                      </IconButton>
+                    <Flex gap="3" style={{ position: 'absolute', bottom: 5, right: 60 }}>
                       <IconButton
                         aria-label="Remove file"
                         onClick={handleRemoveFile}
@@ -164,10 +237,32 @@ const FileUpload = ({ name, disabled, adImageUrl }) => {
               </Flex>
             )}
             <Box marginTop={1}>
-              <Typography variant="pi" textColor="neutral500">
-                Recommended size for <strong>“Native Card Small”</strong> Ad is{' '}
-                <strong>375px x 600px</strong>, or an image with ratio <strong>9:16</strong>
-              </Typography>
+              {displayError ? (
+                <Typography variant="pi" textColor="danger600">
+                  {displayError}
+                </Typography>
+              ) : !adType?.ad_type_id ? (
+                <Typography variant="pi" textColor="danger600">
+                  Please select an ad type first
+                </Typography>
+              ) : requiredSize ? (
+                <Typography variant="pi" textColor="neutral500">
+                  Accepted formats: <strong>JPG, PNG, WebP</strong>
+                  <br />
+                  Minimum image size:{' '}
+                  <strong>
+                    {requiredSize.width}px x {requiredSize.height}px
+                  </strong>
+                  <br />
+                  Required aspect ratio:{' '}
+                  <strong>{(requiredSize.width / requiredSize.height).toFixed(2)}</strong> (±5%
+                  tolerance)
+                </Typography>
+              ) : (
+                <Typography variant="pi" textColor="neutral500">
+                  Please select an ad type to see image requirements
+                </Typography>
+              )}
             </Box>
           </Box>
         );

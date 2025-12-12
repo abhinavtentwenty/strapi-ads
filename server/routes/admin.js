@@ -84,7 +84,7 @@ module.exports = {
     {
       method: 'GET',
       path: '/campaign/generate-report',
-      handler: 'campaign.generateAdsReport',
+      handler: 'campaign.generateCampaignReport',
       config: {
         policies: [],
       },
@@ -173,6 +173,14 @@ module.exports = {
       method: 'GET',
       path: '/get-destination-pages/:ad_destination_model',
       handler: 'ad.getDestinationPage',
+      config: {
+        policies: [],
+      },
+    },
+    {
+      method: 'GET',
+      path: '/get-destination-model',
+      handler: 'ad.getDestinationModel',
       config: {
         policies: [],
       },

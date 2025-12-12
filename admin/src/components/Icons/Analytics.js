@@ -1,6 +1,6 @@
 import React from 'react';
 
-const Analytics = ({ stroke = '#8e8ea9' }) => {
+const Analytics = ({ className, stroke = '#8e8ea9' }) => {
   return (
     <svg
       xmlns="http://www.w3.org/2000/svg"
@@ -12,6 +12,7 @@ const Analytics = ({ stroke = '#8e8ea9' }) => {
       strokeWidth="1.5"
       strokeLinecap="round"
       strokeLinejoin="round"
+      className={className}
     >
       <path d="M17.5 16.25H2.5V3.75M17.5 7.5L12.5 11.875L7.5 8.125L2.5 12.5" />
     </svg>

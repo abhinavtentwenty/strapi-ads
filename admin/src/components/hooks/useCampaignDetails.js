@@ -1,36 +1,22 @@
 import { useFetchClient } from '@strapi/helper-plugin';
 import useSWR from 'swr';
 import pluginId from '../../pluginId';
-import qs from 'qs';
 
 const useCampaignDetails = (id) => {
-  if (!id) return { campaign: null, isLoading: false, isError: null };
-
   const { get } = useFetchClient();
 
-  // const query = qs.stringify(
-  //   {
-  //     populate: {
-  //       campaign_status: true,
-  //       ads: {
-  //         populate: {
-  //           ad_spot: { populate: '*' },
-  //           ad_type: { populate: '*' },
-  //           ad_screens: { populate: '*' },
-  //           ad_image: { populate: '*' },
-  //         },
-  //       },
-  //     },
-  //   },
-  //   { encodeValuesOnly: true }
-  // );
-
-  const { data, error, isLoading, mutate } = useSWR(['campaign', id], () =>
-    get(`/${pluginId}/get-campaigns/${id}`)
+  const { data, error, isLoading, mutate } = useSWR(
+    id ? ['campaign', id] : null, // Only fetch if id exists
+    () => get(`/${pluginId}/get-campaigns/${id}`),
+    {
+      revalidateOnFocus: false, // Don't refetch on window focus
+      revalidateOnReconnect: false, // Don't refetch on reconnect
+      dedupingInterval: 2000, // Prevent duplicate requests within 2 seconds
+    }
   );
 
   return {
-    campaign: data?.data || {},
+    campaign: data?.data || null,
     isLoading,
     isError: error,
     mutate,

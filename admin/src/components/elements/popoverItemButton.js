@@ -9,6 +9,7 @@ const PopoverItemButton = styled.button`
   padding: 8px 16px;
   cursor: pointer;
   transition: background 0.2s;
+  background: ${({ theme }) => theme.colors.neutral0};
   &:hover {
     background: ${({ theme }) => theme.colors.primary100};
   }

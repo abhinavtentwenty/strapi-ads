@@ -1,13 +1,11 @@
 // @ts-nocheck
-import '../../global.css';
-import React, { useEffect } from 'react';
-import { useLocation, useHistory } from 'react-router-dom';
-import qs from 'qs';
-import { useForm } from 'react-hook-form';
 import {
+  Box,
   Button,
-  Badge,
   Dots,
+  Flex,
+  MultiSelect,
+  MultiSelectOption,
   NextLink,
   PageLink,
   Pagination,
@@ -15,31 +13,33 @@ import {
   Searchbar,
   SingleSelect,
   SingleSelectOption,
-  MultiSelect,
-  MultiSelectOption,
-  Box,
-  Flex,
-  Typography,
   TabGroup,
-  Tabs,
-  TabPanels,
   TabPanel,
+  TabPanels,
+  Tabs,
+  Typography,
 } from '@strapi/design-system';
+import qs from 'qs';
+import React, { useEffect } from 'react';
+import { useForm } from 'react-hook-form';
+import { useHistory, useLocation } from 'react-router-dom';
+import '../../global.css';
 
-import { Plus, List, Calendar } from '@strapi/icons';
+import { Calendar, List, Plus } from '@strapi/icons';
 
 import { useState } from 'react';
 import useCampaigns from '../../components/hooks/useCampaigns';
 // import { useDebounce } from "../utils/useDebounce";
 import TabButton from '../../components/elements/tabButton';
 
+import { useFetchClient } from '@strapi/helper-plugin';
+import useAdType from '../../components/hooks/useAdType';
+import pluginId from '../../pluginId';
+import { CAMPAIGN_STATUS_OPTIONS, TIMEFRAME_OPTIONS } from '../../utils/constants';
+import getTimeframeDate from '../../utils/getTimeframeDate';
+import ExportReportCsvModal from '../Campaign/components/exportReportCsvModal';
 import ListView from './listView';
 import TimelineView from './timelineView';
-import { CAMPAIGN_STATUS_OPTIONS, TIMEFRAME_OPTIONS } from '../../utils/constants';
-import useAdType from '../../components/hooks/useAdType';
-import getTimeframeDate from '../../utils/getTimeframeDate';
-import pluginId from '../../pluginId';
-import { useFetchClient } from '@strapi/helper-plugin';
 
 const Dashboard = () => {
   /**
@@ -60,12 +60,35 @@ const Dashboard = () => {
   // const debouncedSearch = useDebounce(search, 400);
   const [page, setPage] = useState(1);
   const [pageSize, setPageSize] = useState(10);
+  const [isOpenExportReportCsvModal, setIsOpenExportReportCsvModal] = React.useState(false);
 
   const location = useLocation();
   const history = useHistory();
 
   const params = qs.parse(location.search, { ignoreQueryPrefix: true });
   const activeTab = Number(params.tab) || 0;
+
+  React.useEffect(() => {
+    if (typeof document === 'undefined') return;
+    const root = document.getElementById('strapi');
+    if (!root) return;
+    const className = 'is-campaign-page';
+    root.classList.add(className);
+    return () => root.classList.remove(className);
+  }, []);
+
+  useEffect(() => {
+    if (activeTab !== 0) return;
+    const pageWrapper = document.querySelector('.page-wrapper');
+    const target = pageWrapper?.parentElement?.parentElement;
+    const className = 'adgm-dashboard-wrapper';
+
+    if (target) target.classList.add(className);
+
+    return () => {
+      if (target) target.classList.remove(className);
+    };
+  }, []);
 
   const handleTabChange = (index) => {
     const newParams = { ...params, tab: index };
@@ -132,12 +155,18 @@ const Dashboard = () => {
 
       const response = await get(`/${pluginId}/campaign/generate-report?${query}`);
       window.open(response?.data?.downloadUrl, '_blank');
+      setIsOpenExportReportCsvModal(false);
     } catch (error) {
       console.error('Error downloading CSV:', error);
     }
   };
   return (
-    <section className="py-16 !w-full overflow-hidden">
+    <section className="py-16 !w-full overflow-hidden page-wrapper">
+      <ExportReportCsvModal
+        isOpen={isOpenExportReportCsvModal}
+        setIsOpen={setIsOpenExportReportCsvModal}
+        onSubmit={handleDownloadCSV}
+      />
       <TabGroup
         label="Manage your attribute"
         selectedTabIndex={activeTab}
@@ -155,16 +184,31 @@ const Dashboard = () => {
           <Flex gap={2}>
             <Tabs>
               <TabButton>
-                <Button variant="tertiary" size="L" startIcon={<List />} style={{ width: '100%' }}>
+                <Button
+                  variant="tertiary"
+                  size="L"
+                  startIcon={<List />}
+                  style={{
+                    width: '100%',
+                    borderTopRightRadius: 0,
+                    borderBottomRightRadius: 0,
+                  }}
+                >
                   <Typography fontWeight="bold">List view</Typography>
                 </Button>
               </TabButton>
               <TabButton>
                 <Button
+                  style={{ borderTopRightRadius: 0 }}
                   variant="tertiary"
                   size="L"
                   startIcon={<Calendar />}
-                  style={{ width: '100%' }}
+                  style={{
+                    width: '100%',
+                    borderTopLeftRadius: 0,
+                    borderBottomLeftRadius: 0,
+                    marginLeft: -2,
+                  }}
                 >
                   <Typography style={{ whiteSpace: 'nowrap' }} fontWeight="bold">
                     Timeline View
@@ -172,7 +216,7 @@ const Dashboard = () => {
                 </Button>
               </TabButton>
             </Tabs>
-            <Button size="L" variant="tertiary" onClick={handleDownloadCSV}>
+            <Button size="L" variant="tertiary" onClick={() => setIsOpenExportReportCsvModal(true)}>
               Export CSV
             </Button>
             <Button
@@ -195,7 +239,12 @@ const Dashboard = () => {
               alignItems="center"
               gap={4}
             >
-              <Typography variant="beta" fontWeight="bold" textColor="neutral900">
+              <Typography
+                variant="beta"
+                style={{ fontSize: '1.4rem' }}
+                fontWeight="bold"
+                textColor="neutral900"
+              >
                 All campaigns
               </Typography>
               <Flex gap={3} wrap="wrap" alignItems="center">
@@ -221,6 +270,11 @@ const Dashboard = () => {
                     setStatus(value);
                     setPage(1); // Reset page to 1 when status filter changes
                   }}
+                  customizeContent={(value) =>
+                    value
+                      .map((v) => CAMPAIGN_STATUS_OPTIONS.find((opt) => opt.value === v)?.label)
+                      .join(', ')
+                  }
                 >
                   {CAMPAIGN_STATUS_OPTIONS.map((status) => (
                     <MultiSelectOption key={status.value} value={status.value}>
@@ -268,15 +322,41 @@ const Dashboard = () => {
                 handleSortChange={handleSortChange}
                 isLoading={isLoading}
                 sort={sort}
+                filters={{
+                  page,
+                  pageSize,
+                  status,
+                  type,
+                  time,
+                  search,
+                  sort,
+                }}
               />
             </TabPanel>
             <TabPanel>
-              <TimelineView paginatedCampaigns={paginatedCampaigns} />
+              <TimelineView
+                paginatedCampaigns={paginatedCampaigns}
+                isLoading={isLoading}
+                filters={{
+                  page,
+                  pageSize,
+                  status,
+                  type,
+                  time,
+                  search,
+                  sort,
+                }}
+              />
             </TabPanel>
           </TabPanels>
         </Box>
         {/* Display per page selector */}
-        <Flex alignItems="center" justifyContent="space-between" marginTop={6}>
+        <Flex
+          alignItems="center"
+          justifyContent="space-between"
+          marginTop={6}
+          style={{ position: 'relative', zIndex: 50 }}
+        >
           <Flex alignItems="center" gap={2}>
             <SingleSelect
               value={String(pageSize)}

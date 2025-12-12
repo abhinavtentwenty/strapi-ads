@@ -4,6 +4,8 @@ import { ChartContainer, ChartTooltip, ChartTooltipContent } from '../../compone
 import React from 'react';
 import { useTheme } from '@strapi/design-system';
 import { format, parseISO } from 'date-fns';
+import { Typography } from '@strapi/design-system';
+import styled from 'styled-components';
 
 const chartConfig = {
   ctr: {
@@ -12,28 +14,63 @@ const chartConfig = {
   },
 };
 
+const StyledTooltipContent = styled(ChartTooltipContent)`
+  background-color: ${({ theme }) => theme.colors.neutral100} !important;
+  border: 1px solid ${({ theme }) => theme.colors.neutral150} !important;
+  border-radius: 4px !important;
+  color: ${({ theme }) => theme.colors.neutral0} !important;
+
+  /* Target the label text */
+  .recharts-tooltip-item-name,
+  .recharts-tooltip-item-value,
+  .recharts-tooltip-label {
+    color: ${({ theme }) => theme.colors.neutral800} !important;
+  }
+
+  /* Target all text inside tooltip */
+  * {
+    color: ${({ theme }) => theme.colors.neutral800} !important;
+  }
+`;
+
 const formatCTRChartData = (apiData) => {
   if (!Array.isArray(apiData)) return [];
-  return apiData.map((item) => {
-    const { stat_date, impressions, clicks } = item.attributes;
-    const ctr = Number(impressions) > 0 ? (Number(clicks) / Number(impressions)) * 100 : 0;
-    return {
-      date: format(parseISO(stat_date), 'MMM d'),
-      ctr: Number(ctr.toFixed(2)),
-    };
-  });
+
+  return apiData
+    .map((item) => {
+      try {
+        const { stat_date, impressions, clicks } = item?.attributes || {};
+
+        if (!stat_date || isNaN(Date.parse(stat_date))) {
+          console.warn('Missing stat_date in item:', item);
+          return null;
+        }
+
+        const impressionNum = Number(impressions) || 0;
+        const clickNum = Number(clicks) || 0;
+        const ctr = impressionNum > 0 ? (clickNum / impressionNum) * 100 : 0;
+
+        return {
+          date: format(parseISO(stat_date), 'MMM d'),
+          ctr: Number(ctr.toFixed(2)),
+        };
+      } catch (error) {
+        console.error('Error formatting CTR data:', error, item);
+        return null;
+      }
+    })
+    .filter(Boolean);
 };
 
 const ClickThroughRateTrend = ({ data }) => {
-  const theme = useTheme();
   const chartData = formatCTRChartData(data);
 
   if (!chartData.length) {
     return (
       <ChartContainer className="h-[350px] w-full" config={chartConfig}>
-        <div className="flex items-center justify-center h-full text-neutral500">
+        <Typography className="flex items-center justify-center h-full text-neutral500">
           No analytics data available
-        </div>
+        </Typography>
       </ChartContainer>
     );
   }
@@ -53,7 +90,7 @@ const ClickThroughRateTrend = ({ data }) => {
           tickLine={false}
           axisLine={{ stroke: '#C0C0C0', strokeDasharray: '2 2' }}
           tickMargin={8}
-          tickFormatter={(value) => value.slice(0, 6)}
+          tickFormatter={(value) => (value ? value.slice(0, 6) : '')}
           tick={{ fontSize: 10 }}
         />
         <YAxis tickLine={false} axisLine={false} tick={{ fontSize: 10 }} />
@@ -61,11 +98,15 @@ const ClickThroughRateTrend = ({ data }) => {
         {/* Tooltip */}
         <ChartTooltip
           cursor={{
-            stroke: theme.colors.neutral900,
+            stroke: '#32324d',
             strokeWidth: 3,
           }}
           content={
-            <ChartTooltipContent indicator="dot" hideLabel formatter={(value) => `CTR ${value}%`} />
+            <StyledTooltipContent
+              indicator="dot"
+              hideLabel
+              formatter={(value) => `CTR ${value}%`}
+            />
           }
         />
         <Area

@@ -19,7 +19,7 @@ import { toast } from 'sonner';
 import { CheckCircle } from '@strapi/icons';
 import pluginId from '../../pluginId';
 import useUnpublishOrArchiveAd from '../../components/hooks/useUnpublisOrArchiveAd';
-const AdActionMenu = ({ data }) => {
+const AdActionMenu = ({ data, onStatusChange, filters }) => {
   const history = useHistory();
   const [isOpenArchiveAdModal, setIsOpenArchiveAdModal] = React.useState(false);
   const [isOpenUnpublishAdModal, setIsOpenUnpublishAdModal] = React.useState(false);
@@ -33,38 +33,88 @@ const AdActionMenu = ({ data }) => {
       const response = await get(`/${pluginId}/ad/duplicate/${data.id}`);
       history.push(`campaigns/edit/${response?.data?.campaign?.id}`);
 
-      mutate(['ads']);
+      await mutate(
+        [
+          'ads',
+          true,
+          filters?.page || 1,
+          filters?.pageSize || 10,
+          filters?.status || [''],
+          filters?.type || '',
+          filters?.search || '',
+          filters?.campaign || '',
+          filters?.sort || { field: 'ad_name', order: 'ASC' },
+        ],
+        undefined,
+        { revalidate: true }
+      );
+
       toast.success('Campaign Successfully Duplicated!', {
         icon: <CheckCircle color="success500" />,
         position: 'top-center',
-        style: {
-          background: '#eafbe7',
-        },
       });
       setOpenPopover(false);
     } catch (error) {
       toast.error('Failed to Duplicate Campaign!', {
         icon: <CheckCircle color="danger500" />,
         position: 'top-center',
-        style: {
-          background: '#fbeaf7',
-        },
       });
     }
   };
-  const handleUnpublish = () => {
+
+  const handleUnpublish = async () => {
     updateAdStatus({
       adId: data.id,
       status: 'inactive',
-      onComplete: () => setIsOpenUnpublishAdModal(false),
+      onComplete: async () => {
+        setIsOpenUnpublishAdModal(false);
+        setOpenPopover(false);
+
+        // Mutate with current filters
+        await mutate(
+          [
+            'ads',
+            true,
+            filters?.page || 1,
+            filters?.pageSize || 10,
+            filters?.status || [''],
+            filters?.type || '',
+            filters?.search || '',
+            filters?.campaign || '',
+            filters?.sort || { field: 'ad_name', order: 'ASC' },
+          ],
+          undefined,
+          { revalidate: true }
+        );
+      },
     });
   };
 
-  const handleArchive = () => {
+  const handleArchive = async () => {
     updateAdStatus({
       adId: data.id,
       status: 'archived',
-      onComplete: () => setIsOpenArchiveAdModal(false),
+      onComplete: async () => {
+        setIsOpenArchiveAdModal(false);
+        setOpenPopover(false);
+
+        // Mutate with current filters
+        await mutate(
+          [
+            'ads',
+            true,
+            filters?.page || 1,
+            filters?.pageSize || 10,
+            filters?.status || [''],
+            filters?.type || '',
+            filters?.search || '',
+            filters?.campaign || '',
+            filters?.sort || { field: 'ad_name', order: 'ASC' },
+          ],
+          undefined,
+          { revalidate: true }
+        );
+      },
     });
   };
 
@@ -73,13 +123,13 @@ const AdActionMenu = ({ data }) => {
       <ConfirmArchiveModal
         isOpen={isOpenArchiveAdModal}
         setIsOpen={setIsOpenArchiveAdModal}
-        onSubmit={() => {}}
+        onSubmit={handleArchive}
         variant="ads"
       />
       <ConfirmUnpublishModal
         isOpen={isOpenUnpublishAdModal}
         setIsOpen={setIsOpenUnpublishAdModal}
-        onSubmit={() => {}}
+        onSubmit={handleUnpublish}
         variant="ads"
       />
       <Popover open={openPopover} onOpenChange={setOpenPopover}>
@@ -89,25 +139,35 @@ const AdActionMenu = ({ data }) => {
           </IconButton>
         </PopoverTrigger>
         <PopoverContent>
-          <Flex direction="column" style={{ padding: '8px 0px', width: '155px' }}>
-            <PopoverItemButton onClick={() => history.push(`ads/report/${data.id}`)}>
-              <Typography>View Details</Typography>
+          <Flex
+            background="neutral0"
+            direction="column"
+            style={{ padding: '8px 0px', width: '155px' }}
+          >
+            <PopoverItemButton onClick={() => history.push(`campaigns/view/${data?.campaign?.id}?ad=${data.id}`)}>
+              <Typography textColor="neutral800">View Details</Typography>
               <Eye />
             </PopoverItemButton>
-            <PopoverItemButton onClick={() => history.push(`campaigns/edit/${data?.campaign?.id}`)}>
-              <Typography> Edit </Typography>
+            <PopoverItemButton onClick={() => history.push(`campaigns/edit/${data?.campaign?.id}?ad=${data.id}`)}>
+              <Typography textColor="neutral800"> Edit </Typography>
               <Edit />
             </PopoverItemButton>
             <PopoverItemButton onClick={handleDuplicate}>
-              <Typography> Duplicate</Typography>
+              <Typography textColor="neutral800"> Duplicate</Typography>
               <Duplicate />
             </PopoverItemButton>
-            <PopoverItemButton disabled={data?.ad_status === 'inactive'} onClick={handleUnpublish}>
-              <Typography>Unpublished</Typography>
+            <PopoverItemButton
+              disabled={data?.ad_status !== 'live'}
+              onClick={() => setIsOpenUnpublishAdModal(true)}
+            >
+              <Typography textColor="neutral800">Unpublished</Typography>
               <Pause />
             </PopoverItemButton>
-            <PopoverItemButton disabled={data?.ad_status === 'archived'} onClick={handleArchive}>
-              <Typography>Archive</Typography>
+            <PopoverItemButton
+              disabled={data?.ad_status === 'archived'}
+              onClick={() => setIsOpenArchiveAdModal(true)}
+            >
+              <Typography textColor="neutral800">Archive</Typography>
               <Archive />
             </PopoverItemButton>
           </Flex>

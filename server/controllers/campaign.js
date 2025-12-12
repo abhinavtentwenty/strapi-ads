@@ -21,6 +21,10 @@ const hasConflictingDates = async (ads, campaign) => {
         continue;
       }
 
+      if (ad1.ad_type !== ad2.ad_type) {
+        continue;
+      }
+
       if (ad1.ad_spot !== ad2.ad_spot) {
         continue;
       }
@@ -62,6 +66,10 @@ const hasConflictingDates = async (ads, campaign) => {
     // Build the query filters
     const filters = {
       ad_status: 'live',
+      campaign: {
+        campaign_status: 'active',
+      },
+      ad_type: ad1.ad_type,
       ad_spot: ad1.ad_spot,
       ...(screens.length === 0
         ? { ad_screens: { $null: true } }
@@ -72,16 +80,17 @@ const hasConflictingDates = async (ads, campaign) => {
       ...(ad1.id && { id: { $ne: ad1.id } }),
     };
 
-    const conflictingAd = await strapi.db.query('plugin::strapi-ads.ad').findOne({
-      where: filters,
-      populate: ['campaign'],
+    const conflictingAd = await strapi.entityService.findMany('plugin::strapi-ads.ad', {
+      filters,
+      populate: ['campaign', 'ad_type', 'ad_spot', 'ad_screens'],
+      limit: 1,
     });
 
-    if (conflictingAd) {
+    if (conflictingAd.length > 0) {
       return {
         conflict: true,
         adLocal: ad1,
-        adRemote: conflictingAd,
+        adRemote: conflictingAd[0],
         message: `Remote conflicts with existing ad (same spot and screen with overlapping dates)`,
       };
     }
@@ -118,8 +127,12 @@ module.exports = createCoreController(modelName, ({ strapi }) => ({
         }
       }
 
-      const startDates = data.ads.map((ad) => parseISO(ad.ad_start_date)).filter(Boolean);
-      const endDates = data.ads.map((ad) => parseISO(ad.ad_end_date)).filter(Boolean);
+      const startDates = data.ads
+                        .map(ad => typeof ad.ad_start_date === 'string' ? parseISO(ad.ad_start_date) : null)
+                        .filter(date => date instanceof Date && !isNaN(date));
+      const endDates = data.ads
+                        .map(ad => typeof ad.ad_end_date === 'string' ? parseISO(ad.ad_end_date) : null)
+                        .filter(date => date instanceof Date && !isNaN(date));
 
       const minStart = startDates.length ? new Date(Math.min(...startDates)) : null;
       const maxEnd = endDates.length ? new Date(Math.max(...endDates)) : null;
@@ -176,9 +189,10 @@ module.exports = createCoreController(modelName, ({ strapi }) => ({
       }
   },
 
-  async generateAdsReport(ctx){
+  async generateCampaignReport(ctx){
     try{
-      return strapi.plugin('strapi-ads').service('campaign').generateAdsReport(ctx);
+      console.log("herer??")
+      return strapi.plugin('strapi-ads').service('campaign').generateCampaignReport(ctx);
     }catch(e){
       console.error(e);
       return e;

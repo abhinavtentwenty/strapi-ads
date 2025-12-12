@@ -17,19 +17,24 @@ const adStatModel = 'plugin::strapi-ads.ad-stat';
 const campaignStatModel = 'plugin::strapi-ads.campaign-stat';
 const campaignModel = 'plugin::strapi-ads.campaign';
 const { getTempDirectory, capitalizeFirst } = require('../helpers/generate-csv');
+const {logger}=require("../../../../../helpers/logger");
 
 module.exports = createCoreService('plugin::strapi-ads.campaign', ({ strapi }) => ({
   async duplicate(ctx) {
     const { id } = ctx.params;
     const originalCampaign = await strapi.entityService.findOne('plugin::strapi-ads.campaign', id, {
-      populate: ['ads', 'ads.ad_image'],
+      populate: {
+        ads: {
+          populate: '*',
+        }
+      },
     });
     if (!originalCampaign) {
       ctx.throw(404, 'Campaign not found');
     }
     // @ts-ignore
     let { ads, ...campaignData } = originalCampaign;
-    campaignData = deepOmit(campaignData, ['id', 'createdAt', 'updatedAt', 'publishedAt']);
+    campaignData = _.omit(campaignData, ['id', 'createdAt', 'updatedAt', 'publishedAt','createdBy', 'updatedBy',  'total_impressions', 'total_clicks']);
     campaignData.campaign_name = `${campaignData.campaign_name} (Copy)-${originalCampaign?.id + 1}`;
     campaignData.campaign_id = await strapi
       .service('plugin::content-manager.uid')
@@ -52,7 +57,7 @@ module.exports = createCoreService('plugin::strapi-ads.campaign', ({ strapi }) =
     if (ads?.length) {
       // @ts-ignore
       ads = ads?.map((ad) =>
-        deepOmit(ad, ['id', 'createdAt', 'updatedAt', 'publishedAt', 'campaign'])
+          _.omit(ad, ['id', 'createdAt', 'updatedAt', 'publishedAt', 'createdBy', 'updatedBy', 'campaign', 'total_impressions', 'total_clicks'])
       );
       // @ts-ignore
       for (const ad of ads) {
@@ -80,7 +85,7 @@ module.exports = createCoreService('plugin::strapi-ads.campaign', ({ strapi }) =
       'plugin::strapi-ads.campaign',
       duplicatedCampaign?.id,
       {
-        populate: ['ads', 'campaign_status', 'ads.ad_status', 'ads.ad_image'],
+        populate: ['ads','ads.ad_image', 'ads.ad_type', 'ads.ad_spot', 'ads.ad_screens', ],
       }
     );
   },
@@ -196,11 +201,16 @@ module.exports = createCoreService('plugin::strapi-ads.campaign', ({ strapi }) =
     } while (hasMore);
 
     const entries = Object.entries(campaignAgg);
+
+    const previousVersionsArray = [];
     for (const [campaignId, data] of entries) {
-      const previousDayStats = await strapi.db.query(campaignStatModel).findOne({
-        where: { campaign_id: campaignId, stat_date: dayBefore },
-        fields: ['total_impressions', 'total_clicks'],
+      const previousDayStatsArray = await strapi.entityService.findMany(campaignStatModel, {
+        filters: { campaign_id: campaignId, stat_date: { $lt: statDate } },
+        sort: { stat_date: 'desc' },
+        limit: 1,
       });
+
+      const previousDayStats = previousDayStatsArray[0];
 
       const previousTotalImpressions = previousDayStats?.total_impressions || 0;
       const previousTotalClicks = previousDayStats?.total_clicks || 0;
@@ -211,6 +221,15 @@ module.exports = createCoreService('plugin::strapi-ads.campaign', ({ strapi }) =
 
       const existing = await strapi.db.query(campaignStatModel).findOne({
         where: { campaign_id: campaignId, stat_date: statDate },
+      });
+
+      logger.info("existing", {
+        campaign_id: campaignId,
+        stat_date: statDate,
+        impressions: data.impressions,
+        clicks: data.clicks,
+        total_impressions: totalImpressions,
+        total_clicks: totalClicks,
       });
 
       if (existing) {
@@ -248,13 +267,17 @@ module.exports = createCoreService('plugin::strapi-ads.campaign', ({ strapi }) =
     strapi.log.info(
       `[Cron] Campaign stats aggregated for ${statDate} — ${entries.length} campaigns`
     );
+
+    return {
+      previousVersionsArray
+    }
   },
 
   async generateDailyStats(date) {
     const statDate = date || format(subDays(new Date(), 1), 'yyyy-MM-dd');
 
-    const activeCampaigns = await strapi.db.query(modelName).count({
-      where: {
+    const activeCampaigns = await strapi.entityService.count(modelName, {
+      filters: {
         campaign_status: 'active',
         $or: [{ ads: { ad_end_date: null } }, { ads: { ad_end_date: { $gte: statDate } } }],
         ads: {
@@ -264,8 +287,8 @@ module.exports = createCoreService('plugin::strapi-ads.campaign', ({ strapi }) =
       },
     });
 
-    const activeAds = await strapi.db.query(adModel).count({
-      where: {
+    const activeAds = await strapi.entityService.count(adModel, {
+      filters: {
         campaign: { campaign_status: 'active' },
         ad_status: 'live',
         ad_start_date: { $lte: statDate },
@@ -296,7 +319,7 @@ module.exports = createCoreService('plugin::strapi-ads.campaign', ({ strapi }) =
 
     const totalImpressions =
         parseInt(previousTotalImpressions, 10) + dailyImpressions;
-    const totalClicks = parseInt(previousTotalClicks, 10) + dailyImpressions;
+    const totalClicks = parseInt(previousTotalClicks, 10) + dailyClicks;
 
     console.log({
       stat_date: statDate,
@@ -346,8 +369,8 @@ module.exports = createCoreService('plugin::strapi-ads.campaign', ({ strapi }) =
     const { id } = ctx.request.params;
 
     const today = format(new Date(), 'yyyy-MM-dd');
-    const totalActiveAds = await strapi.db.query(adModel).count({
-      where: {
+    const totalActiveAds = await strapi.entityService.count(adModel, {
+      filters: {
         ad_status: 'live',
         campaign: { id, campaign_status: 'active' },
         ad_start_date: { $lte: today },
@@ -473,11 +496,22 @@ module.exports = createCoreService('plugin::strapi-ads.campaign', ({ strapi }) =
   },
 
   async fetchStatOverall(ctx) {
+    const today = format(new Date(), 'yyyy-MM-dd');
+
     const totalCampaigns = await strapi.db.query('plugin::strapi-ads.campaign').count();
 
+    const totalActiveAds=await strapi.entityService.count(adModel, {
+      filters:{
+        ad_status: 'live',
+        campaign: {campaign_status:'active'},
+        ad_start_date:{$lte:today},
+        $or:[{ad_end_date:null},{ad_end_date:{$gte:today}}],
+      },
+    });
+
     const lastMonthDate = format(subMonths(new Date(), 1), 'yyyy-MM-dd');
-    const campaignsSinceLastMonth = await strapi.db.query('plugin::strapi-ads.campaign').count({
-      where: {
+    const campaignsSinceLastMonth = await strapi.entityService.count('plugin::strapi-ads.campaign', {
+      filters: {
         createdAt: { $gte: lastMonthDate },
       },
     });
@@ -502,7 +536,7 @@ module.exports = createCoreService('plugin::strapi-ads.campaign', ({ strapi }) =
             {
               label: 'Active Ads',
               type: 'ads',
-              total: 0,
+              total: totalActiveAds,
               delta: 0,
             },
             {
@@ -546,7 +580,6 @@ module.exports = createCoreService('plugin::strapi-ads.campaign', ({ strapi }) =
     // Calculate current values
     const currentTotalImpressions = parseInt(currentStats?.total_impressions || 0, 10);
     const currentTotalClicks = parseInt(currentStats?.total_clicks || 0, 10);
-    const totalActiveAds = parseInt(currentStats?.active_ads || 0, 10);
 
     // Calculate previous day values
     const previousTotalImpressions = parseInt(previousStats?.total_impressions || 0, 10);
@@ -623,90 +656,117 @@ module.exports = createCoreService('plugin::strapi-ads.campaign', ({ strapi }) =
     };
   },
 
-  async generateAdsReport(ctx) {
-    const title = `campaign_report_${format(new Date(), 'yyyyMMdd_HHmmss')}`;
-    const { filters } = ctx.request.query;
-    const tmpWorkingDirectory = await getTempDirectory();
-    const csvId = uuidv4();
-    const outputPath = path.resolve(tmpWorkingDirectory, `${csvId}.csv`);
-    const stream = fs.createWriteStream(outputPath);
+  async generateCampaignReport(ctx) {
+    try{
+      const title=`campaign_report_${format(new Date(),'yyyyMMdd_HHmmss')}`;
+      const {filters}=ctx.request.query;
+      const tmpWorkingDirectory=await getTempDirectory();
+      const csvId=uuidv4();
+      const outputPath=path.resolve(tmpWorkingDirectory,`${csvId}.csv`);
+      const stream=fs.createWriteStream(outputPath);
 
+      const limit=100;
+      let offset=0;
+      let hasMore=true;
+
+      const headers=['Campaign','Date','Status','Ads','Impressions','Clicks','CTR','Company Registered As','Entity Name','Licence Number',];
+
+      stream.write(headers.join(',')+'\n');
+      do{
+        const entities=await strapi.db.query(modelName).findMany({
+          fields:['campaign_name','min_date','max_date','campaign_status','total_impressions','total_clicks','campaign_entity_type','campaign_entity_name','campaign_entity_license_number',],
+          populate:{ads: true },
+          where: filters,
+          limit,
+          offset,
+        });
+
+        if(!entities.length){
+          hasMore=false;
+          break;
+        }
+
+        entities.forEach((entity)=>{
+          const formattedDates=entity.max_date?`${format(new Date(entity.min_date),'dd/MM/yy')} - ${format(new Date(entity.max_date),'dd/MM/yy')}`:`${format(new Date(entity.min_date),'dd/MM/yy')}`;
+          const ctr=entity.total_impressions>0?((entity.total_clicks/entity.total_impressions)*100).toFixed(2):'0.00';
+          const row=[entity.campaign_name,formattedDates,capitalizeFirst(entity.campaign_status),entity.ads.length,entity.total_impressions,entity.total_clicks,ctr,entity.campaign_entity_type,entity.campaign_entity_name,entity.campaign_entity_license_number,]
+          .map((val)=>`"${(val??'').toString().replace(/"/g,'""')}"`)
+          .join(',');
+          stream.write(row+'\n');
+        });
+
+        offset+=limit;
+        hasMore=entities.length===limit;
+      }while(hasMore);
+
+      stream.end();
+
+      return {
+        message:'CSV generated successfully',downloadUrl:`/api/strapi-ads/download-csv/${csvId}/${_.kebabCase(title)}`,
+      };
+    }catch(e){
+      console.error(e);
+    }
+  },
+
+  async expireAds() {
+    const today = format(new Date(), 'yyyy-MM-dd');
     const limit = 100;
-    let offset = 0;
+    let totalExpired = 0;
     let hasMore = true;
 
-    const headers = [
-      'Campaign',
-      'Date',
-      'Status',
-      'Ads',
-      'Impressions',
-      'Clicks',
-      'CTR',
-      'Company Registered As',
-      'Entity Name',
-      'Licence Number',
-    ];
-
-    stream.write(headers.join(',') + '\n');
     do {
-      const entities = await strapi.db.query(modelName).findMany({
-        fields: [
-          'campaign_name',
-          'min_date',
-          'max_date',
-          'campaign_status',
-          'total_impressions',
-          'total_clicks',
-          'campaign_entity_type',
-          'campaign_entity_name',
-          'campaign_entity_license_number',
-        ],
-        populate: { ads: { fields: ['ad_name'] } },
-        filters,
+      const expiredAds = await strapi.entityService.findMany('plugin::strapi-ads.ad', {
+        filters: {
+          ad_end_date: { $lt: today },
+          ad_status: { $ne: 'expired' },
+        },
         limit,
-        offset,
       });
 
-      if (!entities.length) {
+      const adIds = expiredAds.map(ad => ad.id);
+      await strapi.db.connection('ads')
+      .whereIn('id', adIds)
+      .update({ ad_status: 'expired' });
+
+      totalExpired += expiredAds.length;
+      hasMore = expiredAds.length === limit;
+    } while (hasMore);
+
+    return { expiredCount: totalExpired };
+  },
+
+  async expireCampaignsWithAllExpiredAds() {
+    const limit = 100;
+    let totalUpdated = 0;
+    let hasMore = true;
+
+    do {
+      const campaignsToExpire = await strapi.db.connection('campaigns as c')
+      .select('c.id')
+      .innerJoin('ads_campaign_links as acl', 'c.id', 'acl.campaign_id')
+      .innerJoin('ads as a', 'acl.ad_id', 'a.id')
+      .where('c.campaign_status', 'active')
+      .groupBy('c.id')
+      .havingRaw('COUNT(a.id) = COUNT(CASE WHEN a.ad_status = ? THEN 1 END)', ['expired'])
+      .orderBy('c.id', 'asc')
+      .limit(limit);
+
+      if (!campaignsToExpire.length) {
         hasMore = false;
         break;
       }
 
-      entities.forEach((entity) => {
-        const formattedDates = entity.max_date
-          ? `${format(new Date(entity.min_date), 'dd/MM/yy')} - ${format(new Date(entity.max_date), 'dd/MM/yy')}`
-          : `${format(new Date(entity.min_date), 'dd/MM/yy')}`;
-        const ctr =
-          entity.total_impressions > 0
-            ? ((entity.total_clicks / entity.total_impressions) * 100).toFixed(2)
-            : '0.00';
-        const row = [
-          entity.campaign_name,
-          formattedDates,
-          capitalizeFirst(entity.campaign_status),
-          entity.ads.length,
-          entity.total_impressions,
-          entity.total_clicks,
-          ctr,
-          entity.campaign_entity_type,
-          entity.campaign_entity_name,
-          entity.campaign_entity_license_number,
-        ]
-          .map((val) => `"${(val ?? '').toString().replace(/"/g, '""')}"`)
-          .join(',');
-        stream.write(row + '\n');
-      });
+      const campaignIds = campaignsToExpire.map(c => c.id);
+      await strapi.db.connection('campaigns')
+      .whereIn('id', campaignIds)
+      .update({ campaign_status: 'expired' });
 
-      offset += limit;
-      hasMore = entities.length === limit;
+      totalUpdated += campaignIds.length;
+      hasMore = campaignsToExpire.length === limit;
     } while (hasMore);
 
-    stream.end();
+    return { expiredCount: totalUpdated };
 
-    return {
-      message: 'CSV generated successfully',
-      downloadUrl: `/api/strapi-ads/download-csv/${csvId}/${_.kebabCase(title)}`,
-    };
   },
 }));

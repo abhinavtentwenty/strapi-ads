@@ -21,7 +21,7 @@ import { CheckCircle } from '@strapi/icons';
 import { Popover, PopoverContent, PopoverTrigger } from '../../components/ui/popover';
 import PopoverItemButton from '../../components/elements/popoverItemButton';
 import useUnpublishOrArchiveCampaign from '../../components/hooks/useUnpublisOrArchiveCampaign';
-const ActionMenu = ({ data }) => {
+const ActionMenu = ({ data, filters }) => {
   const history = useHistory();
   const [isOpenArchiveCampaignModal, setIsOpenArchiveCampaignModal] = React.useState(false);
   const [isOpenUnpublishCampaignModal, setIsOpenUnpublishCampaignModal] = React.useState(false);
@@ -33,39 +33,86 @@ const ActionMenu = ({ data }) => {
     try {
       const response = await get(`/${pluginId}/get-campaigns/duplicate/${data.id}`);
       history.push(`campaigns/edit/${response?.data?.id}`);
-      mutate(['campaigns']);
+      await mutate(
+        [
+          'campaigns',
+          true,
+          filters?.page || 1,
+          filters?.pageSize || 10,
+          filters?.status || [''],
+          filters?.type || '',
+          filters?.time || '',
+          filters?.search || '',
+          filters?.sort || { field: 'campaign_name', order: 'ASC' },
+        ],
+        undefined,
+        { revalidate: true }
+      );
       toast.success('Campaign Successfully Duplicated!', {
         icon: <CheckCircle color="success500" />,
         position: 'top-center',
-        style: {
-          background: '#eafbe7',
-        },
       });
       setOpenPopover(false);
     } catch (error) {
       toast.error('Failed to Duplicate Campaign!', {
         icon: <CheckCircle color="danger500" />,
         position: 'top-center',
-        style: {
-          background: '#fbeaf7',
-        },
       });
     }
   };
-
-  const handleUnpublish = () => {
+  const handleUnpublish = async () => {
     updateCampaignStatus({
       campaignId: data.id,
       status: 'inactive',
-      onComplete: () => setOpenPopover(false),
+      onComplete: async () => {
+        setIsOpenUnpublishCampaignModal(false);
+        setOpenPopover(false);
+
+        // Mutate with current filters
+        await mutate(
+          [
+            'campaigns',
+            true,
+            filters?.page || 1,
+            filters?.pageSize || 10,
+            filters?.status || [''],
+            filters?.type || '',
+            filters?.time || '',
+            filters?.search || '',
+            filters?.sort || { field: 'campaign_name', order: 'ASC' },
+          ],
+          undefined,
+          { revalidate: true }
+        );
+      },
     });
   };
 
-  const handleArchive = () => {
+  const handleArchive = async () => {
     updateCampaignStatus({
       campaignId: data.id,
       status: 'archived',
-      onComplete: () => setOpenPopover(false),
+      onComplete: async () => {
+        setIsOpenArchiveCampaignModal(false);
+        setOpenPopover(false);
+
+        // Mutate with current filters
+        await mutate(
+          [
+            'campaigns',
+            true,
+            filters?.page || 1,
+            filters?.pageSize || 10,
+            filters?.status || [''],
+            filters?.type || '',
+            filters?.time || '',
+            filters?.search || '',
+            filters?.sort || { field: 'campaign_name', order: 'ASC' },
+          ],
+          undefined,
+          { revalidate: true }
+        );
+      },
     });
   };
 
@@ -74,12 +121,12 @@ const ActionMenu = ({ data }) => {
       <ConfirmArchiveModal
         isOpen={isOpenArchiveCampaignModal}
         setIsOpen={setIsOpenArchiveCampaignModal}
-        onSubmit={() => {}}
+        onSubmit={handleArchive}
       />
       <ConfirmUnpublishModal
         isOpen={isOpenUnpublishCampaignModal}
         setIsOpen={setIsOpenUnpublishCampaignModal}
-        onSubmit={() => {}}
+        onSubmit={handleUnpublish}
       />
 
       <Popover open={openPopover} onOpenChange={setOpenPopover}>
@@ -89,31 +136,35 @@ const ActionMenu = ({ data }) => {
           </IconButton>
         </PopoverTrigger>
         <PopoverContent>
-          <Flex direction="column" style={{ padding: '8px 0px', width: '155px' }}>
+          <Flex
+            background="neutral0"
+            direction="column"
+            style={{ padding: '8px 0px', width: '155px' }}
+          >
             <PopoverItemButton onClick={() => history.push(`campaigns/view/${data.id}`)}>
-              <Typography>View Details</Typography>
+              <Typography textColor="neutral800">View Details</Typography>
               <Eye />
             </PopoverItemButton>
             <PopoverItemButton onClick={() => history.push(`campaigns/edit/${data.id}`)}>
-              <Typography> Edit Campaign</Typography>
+              <Typography textColor="neutral800"> Edit Campaign</Typography>
               <Edit />
             </PopoverItemButton>
             <PopoverItemButton onClick={handleDuplicate}>
-              <Typography> Duplicate</Typography>
+              <Typography textColor="neutral800"> Duplicate</Typography>
               <Duplicate />
             </PopoverItemButton>
             <PopoverItemButton
-              disabled={data?.campaign_status === 'inactive'}
-              onClick={handleUnpublish}
+              disabled={data?.campaign_status !== 'active'}
+              onClick={() => setIsOpenUnpublishCampaignModal(true)}
             >
-              <Typography>Unpublished</Typography>
+              <Typography textColor="neutral800">Unpublished</Typography>
               <Pause />
             </PopoverItemButton>
             <PopoverItemButton
               disabled={data?.campaign_status === 'archived'}
-              onClick={handleArchive}
+              onClick={() => setIsOpenArchiveCampaignModal(true)}
             >
-              <Typography>Archive</Typography>
+              <Typography textColor="neutral800">Archive</Typography>
               <Archive />
             </PopoverItemButton>
           </Flex>

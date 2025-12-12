@@ -1,45 +1,46 @@
 // @ts-nocheck
+import {
+  Box,
+  Button,
+  Flex,
+  Grid,
+  Popover,
+  SingleSelect,
+  SingleSelectOption,
+  Typography,
+  Pagination,
+  PreviousLink,
+  PageLink,
+  Dots,
+  NextLink,
+} from '@strapi/design-system';
+import { More } from '@strapi/icons';
 import React, { useRef } from 'react';
 import { useHistory, useParams } from 'react-router-dom';
 import styled from 'styled-components';
-import {
-  Typography,
-  Flex,
-  Button,
-  Grid,
-  Box,
-  SingleSelect,
-  SingleSelectOption,
-  MultiSelect,
-  MultiSelectOption,
-  Popover,
-} from '@strapi/design-system';
-import { More } from '@strapi/icons';
 
 import CustomBadge from '../../../components/elements/badge';
 import DashboardCard from '../../../components/elements/dashboardcard';
-import PerformanceAnalytics from '../../Components/performanceAnalytics';
-import ClickThroughRateTrend from '../../Components/clickThroughRateTrend';
-import Analytics from '../../../components/Icons/Analytics';
+import Archive from '../../../components/Icons/Archive';
 import Download from '../../../components/Icons/Download';
 import Pause from '../../../components/Icons/Pause';
-import Save from '../../../components/Icons/Save';
-import Archive from '../../../components/Icons/Archive';
+import ClickThroughRateTrend from '../../Components/clickThroughRateTrend';
 import ConfirmArchiveModal from '../../Components/confirmArchiveModal';
 import ConfirmUnpublishModal from '../../Components/confirmUnpublishModal';
+import PerformanceAnalytics from '../../Components/performanceAnalytics';
 
-import CustomButton from '../../../components/elements/customButton';
 import BackButton from '../../../components/elements/backButton';
+import CustomButton from '../../../components/elements/customButton';
 
-import useUnpublishOrArchiveAd from '../../../components/hooks/useUnpublisOrArchiveAd';
-import useAd from '../../../components/hooks/useAd';
-import StatusBadge from '../../../components/elements/statusBadge';
-import { AD_STATUS_OPTIONS, TIMEFRAME_OPTIONS } from '../../../utils/constants';
-import useAdType from '../../../components/hooks/useAdType';
 import emptyImage from '../../../assets/emptyImage.png';
-import useAdStats from '../../../components/hooks/useAdStats';
+import StatusBadge from '../../../components/elements/statusBadge';
+import useAd from '../../../components/hooks/useAd';
 import useAdGraph from '../../../components/hooks/useAdGraph';
+import useAdStats from '../../../components/hooks/useAdStats';
+import useAdType from '../../../components/hooks/useAdType';
 import useDownloadPdf from '../../../components/hooks/useDownloadPdf';
+import useUnpublishOrArchiveAd from '../../../components/hooks/useUnpublisOrArchiveAd';
+import { TIMEFRAME_OPTIONS } from '../../../utils/constants';
 
 const PopoverItem = styled(Flex)`
   padding: 8px 16px;
@@ -48,9 +49,13 @@ const PopoverItem = styled(Flex)`
   cursor: pointer;
   border-radius: 4px;
   transition: background 0.2s ease;
-
   &:hover {
     background: ${({ theme }) => theme.colors.neutral100};
+  }
+  &.disabled {
+    cursor: not-allowed;
+    opacity: 0.5;
+    pointer-events: none;
   }
 `;
 
@@ -58,7 +63,6 @@ const AdReport = () => {
   const { id } = useParams();
   const pdfRef = useRef();
   const downloadPdf = useDownloadPdf();
-  const { adGraph } = useAdGraph({ id });
 
   const { adTypes } = useAdType();
   const { stats } = useAdStats(id);
@@ -70,22 +74,44 @@ const AdReport = () => {
   const [isOpenArchiveAdModal, setIsOpenArchiveAdModal] = React.useState(false);
   const [isOpenUnpublishAdModal, setIsOpenUnpublishAdModal] = React.useState(false);
   const history = useHistory();
-  const { ad } = useAd(id);
+  const [page, setPage] = React.useState(1);
+  const [pageSize, setPageSize] = React.useState(10);
+  const { ad, mutate } = useAd(id);
+  const { adGraph, pagination, isLoading } = useAdGraph({ id, dateRange, page, pageSize });
+
+  const currentPage = pagination?.page || 1;
+  const totalPages = pagination?.pageCount || 1;
+
+  React.useEffect(() => {
+    if (currentPage > totalPages && totalPages > 0) setPage(1);
+  }, [totalPages, currentPage]);
+
+  // Reset to page 1 when dateRange changes
+  React.useEffect(() => {
+    setPage(1);
+  }, [dateRange]);
+
   const { updateAdStatus } = useUnpublishOrArchiveAd();
 
-  const handleUnpublish = () => {
+  const handleUnpublish = async () => {
     updateAdStatus({
-      adId: ad.id,
+      adId: ad?.id,
       status: 'inactive',
-      onComplete: () => setIsOpenUnpublishAdModal(false),
+      onComplete: async () => {
+        setIsOpenUnpublishAdModal(false);
+        await mutate(['ad', id], undefined, { revalidate: true });
+      },
     });
   };
 
-  const handleArchive = () => {
+  const handleArchive = async () => {
     updateAdStatus({
-      adId: ad.id,
+      adId: ad?.id,
       status: 'archived',
-      onComplete: () => setIsOpenArchiveAdModal(false),
+      onComplete: async () => {
+        setIsOpenArchiveAdModal(false);
+        await mutate(['ad', id], undefined, { revalidate: true });
+      },
     });
   };
 
@@ -113,8 +139,8 @@ const AdReport = () => {
         >
           <img
             src={
-              Array.isArray(ad?.ad_image?.data) && ad.ad_image.data[0]?.url
-                ? ad.ad_image.data[0].url
+              Array.isArray(ad?.ad_image?.data) && ad?.ad_image?.data[0]?.url
+                ? ad?.ad_image?.data[0]?.url
                 : emptyImage
             }
             alt={ad?.ad_name || ''}
@@ -161,6 +187,7 @@ const AdReport = () => {
                     onClick={() => setIsOpenUnpublishAdModal(true)}
                     justifyContent="space-between"
                     gap={6}
+                    className={ad?.ad_status !== 'live' ? 'disabled' : ''}
                   >
                     <Typography>Unpublish</Typography>
                     <Pause />
@@ -170,6 +197,7 @@ const AdReport = () => {
                     role="button"
                     style={{ width: '100%' }}
                     onClick={() => setIsOpenArchiveAdModal(true)}
+                    className={ad?.ad_status === 'archived' ? 'disabled' : ''}
                   >
                     <Typography>Archive</Typography>
                     <Archive />
@@ -246,9 +274,9 @@ const AdReport = () => {
             </SingleSelect>
           </Flex>
         </Flex>
-        <Grid marginTop={8} gap={4}>
+        <Flex style={{ marginTop: 8, width: '100% !important' }} gap={4}>
           {stats?.length > 0 && stats?.map((stat) => <DashboardCard key={stat.type} data={stat} />)}
-        </Grid>
+        </Flex>
 
         <Flex alignItems="flex-start" style={{ width: '100%' }}>
           <Box style={{ width: '65%' }}>
@@ -265,7 +293,7 @@ const AdReport = () => {
                         width: '12px',
                         height: '12px',
                         borderRadius: '50%',
-                        backgroundColor: '#F93E00',
+                        backgroundColor: '#104EF5',
                       }}
                     ></span>
                     <Typography
@@ -297,7 +325,13 @@ const AdReport = () => {
                 </Flex>
               </Flex>
               <Box padding={4} marginTop={4} className="max-h-96">
-                <PerformanceAnalytics data={adGraph} />
+                {isLoading ? (
+                  <Typography textAlign="center" padding={4}>
+                    Loading...
+                  </Typography>
+                ) : (
+                  <PerformanceAnalytics data={adGraph} />
+                )}
               </Box>
             </Box>
             <Box padding={6} hasRadius background="neutral0" shadow="filterShadow">
@@ -327,9 +361,123 @@ const AdReport = () => {
                 </Flex>
               </Flex>
               <Box padding={4} marginTop={4} className="max-h-96">
-                <ClickThroughRateTrend data={adGraph} />
+                {isLoading ? (
+                  <Typography textAlign="center" padding={4}>
+                    Loading...
+                  </Typography>
+                ) : (
+                  <ClickThroughRateTrend data={adGraph} />
+                )}
               </Box>
             </Box>
+            <Flex
+              alignItems="center"
+              justifyContent="space-between"
+              marginTop={6}
+              style={{ position: 'relative', zIndex: 50 }}
+            >
+              <Flex alignItems="center" gap={2}>
+                <SingleSelect
+                  value={String(pageSize)}
+                  onChange={(value) => {
+                    setPageSize(Number(value));
+                    setPage(1);
+                  }}
+                  size="S"
+                >
+                  <SingleSelectOption value={10}>10</SingleSelectOption>
+                  <SingleSelectOption value={20}>20</SingleSelectOption>
+                  <SingleSelectOption value={50}>50</SingleSelectOption>
+                  <SingleSelectOption value={100}>100</SingleSelectOption>
+                </SingleSelect>
+                <Typography variant="pi" textColor="neutral600" className="mr-2">
+                  Entries per page:
+                </Typography>
+              </Flex>
+              {/* Pagination */}
+              {totalPages > 1 && (
+                <div className="w-min float-end mt-6">
+                  <Pagination activePage={currentPage} pageCount={totalPages}>
+                    <PreviousLink
+                      as="button"
+                      onClick={(e) => {
+                        e.preventDefault();
+                        if (currentPage > 1) setPage(currentPage - 1);
+                      }}
+                      disabled={currentPage === 1}
+                      aria-label="Previous page"
+                    >
+                      Previous
+                    </PreviousLink>
+                    {(() => {
+                      const links = [];
+                      let start = Math.max(1, page - 2);
+                      let end = Math.min(totalPages, page + 2);
+                      if (start > 1) {
+                        links.push(
+                          <PageLink
+                            key={1}
+                            number={1}
+                            as="button"
+                            onClick={(e) => {
+                              e.preventDefault();
+                              setPage(1);
+                            }}
+                          >
+                            1
+                          </PageLink>
+                        );
+                        if (start > 2) links.push(<Dots key="dots-start">...</Dots>);
+                      }
+                      for (let i = start; i <= end; i++) {
+                        links.push(
+                          <PageLink
+                            key={i}
+                            number={i}
+                            as="button"
+                            onClick={(e) => {
+                              e.preventDefault();
+                              setPage(i);
+                            }}
+                            aria-current={i === currentPage ? 'page' : undefined}
+                          >
+                            {i}
+                          </PageLink>
+                        );
+                      }
+                      if (end < totalPages) {
+                        if (end < totalPages - 1) links.push(<Dots key="dots-end">...</Dots>);
+                        links.push(
+                          <PageLink
+                            key={totalPages}
+                            number={totalPages}
+                            as="button"
+                            onClick={(e) => {
+                              e.preventDefault();
+                              setPage(totalPages);
+                            }}
+                          >
+                            {totalPages}
+                          </PageLink>
+                        );
+                      }
+                      return links;
+                    })()}
+                    <NextLink
+                      as="button"
+                      onClick={(e) => {
+                        e.preventDefault();
+                        if (currentPage < totalPages) setPage(currentPage + 1);
+                      }}
+                      disabled={currentPage === totalPages}
+                      aria-label="Next page"
+                    >
+                      Next
+                    </NextLink>
+                  </Pagination>
+                </div>
+              )}
+            </Flex>
           </Box>
           <Box
             style={{ width: '35%' }}
@@ -400,7 +548,7 @@ const AdReport = () => {
                   Format
                 </Typography>
                 <Typography variant="epsilon" textColor="neutral600">
-                  native-large
+                  {ad?.ad_spot?.ad_spot_title || ''}
                 </Typography>
               </Flex>
               <Flex justifyContent="space-between" style={{ width: '100%' }}>
@@ -408,7 +556,7 @@ const AdReport = () => {
                   Size
                 </Typography>
                 <Typography variant="epsilon" textColor="neutral600">
-                  375 x 600
+                  {`${ad?.ad_type?.image_size?.width || ''} x ${ad?.ad_type?.image_size?.height || ''}`}
                 </Typography>
               </Flex>
               <Flex justifyContent="space-between" style={{ width: '100%' }}>

@@ -1,48 +1,53 @@
 // @ts-nocheck
+import { Button, Flex, Table, Tbody, Td, Th, Thead, Tr, Typography } from '@strapi/design-system';
 import React from 'react';
 import { useHistory } from 'react-router-dom';
-import {
-  Button,
-  Table,
-  Tbody,
-  Td,
-  Th,
-  Thead,
-  Tr,
-  Badge,
-  Flex,
-  Typography,
-  Grid,
-} from '@strapi/design-system';
 
-import { CarretDown, Plus, CarretUp } from '@strapi/icons';
+import { CarretDown, CarretUp, Plus } from '@strapi/icons';
 // import { EmptyDocuments } from "@strapi/icons/symbols";
+import { format } from 'date-fns';
 
 import Analytics from '../../components/Icons/Analytics';
-import DashboardCard from '../../components/elements/dashboardcard';
-import ActionMenu from './actionMenu';
 import CustomIconButton from '../../components/elements/customIconButton';
-const TrStyles = 'text-xl text-[#62627B] uppercase font-bold';
-const TdStyles = 'text-2xl';
-import CustomBadge from '../../components/elements/badge';
+import DashboardCard from '../../components/elements/dashboardcard';
 import StatusBadge from '../../components/elements/statusBadge';
 import useAdModuleStats from '../../components/hooks/useAdModuleStats';
+import { formatNumber } from '../../utils/utils';
+import ActionMenu from './actionMenu';
+const TrStyles = 'text-xl uppercase font-bold';
+const TdStyles = 'text-2xl';
 
-const ListView = ({ paginatedCampaigns, handleSortChange, sort, isLoading }) => {
+const ListView = ({ paginatedCampaigns, handleSortChange, sort, isLoading, filters }) => {
   const history = useHistory();
   const { stats } = useAdModuleStats();
+
+  const handleRowClick = (event, campaignId) => {
+    // Prevent navigation if clicking on buttons or interactive elements
+    const target = event.target;
+    const isInteractiveElement =
+      target.closest('button') || target.closest('a') || target.closest('[role="button"]');
+
+    if (!isInteractiveElement) {
+      history.push(`campaigns/view/${campaignId}`);
+    }
+  };
 
   return (
     <>
       <div className="!p-6 ">
-        <Flex marginTop={8} gap={4}>
+        <div className="grid" style={{ gridTemplateColumns: 'repeat(5, 1fr)', gap: 10 }}>
           {stats?.length > 0 && stats?.map((stat) => <DashboardCard key={stat.type} data={stat} />)}
-        </Flex>
+        </div>
       </div>
-      <Table colCount={7} rowCount={paginatedCampaigns?.length}>
+
+      <Table
+        className="ads-table w-max min-w-full"
+        colCount={7}
+        rowCount={paginatedCampaigns?.length}
+      >
         <Thead>
           <Tr className={TrStyles}>
-            <Th onClick={() => handleSortChange('campaign_name')}>
+            <Th onClick={() => handleSortChange('campaign_name')} style={{ paddingInline: 24 }}>
               <div className="flex gap-2 items-center cursor-pointer">
                 <Typography variant="pi" fontWeight="bold" textColor="neutral700">
                   Campaign
@@ -131,7 +136,7 @@ const ListView = ({ paginatedCampaigns, handleSortChange, sort, isLoading }) => 
               </div>
             </Th>
 
-            <Th>
+            <Th className="sticky right-0 px-6" background="neutral0">
               <Typography variant="pi" fontWeight="bold" textColor="neutral700">
                 Action
               </Typography>
@@ -141,9 +146,9 @@ const ListView = ({ paginatedCampaigns, handleSortChange, sort, isLoading }) => 
         <Tbody>
           {paginatedCampaigns?.length > 0 ? (
             paginatedCampaigns?.map((c, idx) => (
-              <Tr key={idx}>
+              <Tr key={idx} onClick={(e) => handleRowClick(e, c.id)} style={{ cursor: 'pointer' }}>
                 {/* Campaign name and ID */}
-                <Td className={TdStyles}>
+                <Td className={TdStyles} style={{ paddingInline: 24 }}>
                   <div className="flex flex-col">
                     <Typography as="span" variant="epsilon">
                       {c.campaign_name}
@@ -154,7 +159,10 @@ const ListView = ({ paginatedCampaigns, handleSortChange, sort, isLoading }) => 
                   </div>
                 </Td>
                 {/* Campaign date range (static for now) */}
-                <Td className={TdStyles}>12/01/25 - 13/02/25</Td>
+                <Td className={TdStyles}>
+                  {c?.min_date ? format(new Date(c?.min_date), 'dd/MM/yyyy') : ''} -{' '}
+                  {c?.max_date ? format(new Date(c?.max_date), 'dd/MM/yyyy') : ''}
+                </Td>
                 {/* Campaign status */}
                 <Td className={TdStyles}>
                   <StatusBadge status={c?.campaign_status} />
@@ -162,7 +170,7 @@ const ListView = ({ paginatedCampaigns, handleSortChange, sort, isLoading }) => 
                 <Td className={TdStyles}>
                   <div className="flex flex-col">
                     <Typography as="span" variant="epsilon">
-                      {c?.ads?.length < 10 ? `0${c?.ads?.length}` : c?.ads?.length}
+                      {formatNumber(c?.ads?.length < 10 ? `0${c?.ads?.length}` : c?.ads?.length)}
                     </Typography>
                     <Typography as="span" variant="pi">
                       Advertisments
@@ -171,19 +179,19 @@ const ListView = ({ paginatedCampaigns, handleSortChange, sort, isLoading }) => 
                 </Td>
                 <Td className={TdStyles}>
                   <Typography as="span" variant="epsilon">
-                    {c?.total_impressions ?? ''}
+                    {formatNumber(c?.total_impressions) ?? 0}
                   </Typography>
                 </Td>
                 <Td className={TdStyles}>
                   <Typography as="span" variant="epsilon">
-                    {c?.total_clicks ?? ''}
+                    {formatNumber(c?.total_clicks) ?? 0}
                   </Typography>
                 </Td>
 
                 <Td className={TdStyles}>
                   <Typography as="span" variant="epsilon">
                     {c?.total_clicks && c?.total_impressions
-                      ? `${(c?.total_clicks / c?.total_impressions) * 100}%`
+                      ? `${((c?.total_clicks / c?.total_impressions) * 100).toFixed(2)}%`
                       : '0%'}
                   </Typography>
                 </Td>
@@ -193,15 +201,18 @@ const ListView = ({ paginatedCampaigns, handleSortChange, sort, isLoading }) => 
                   </Typography>
                 </Td>
                 {/* Action menu for campaign */}
-                <Td>
-                  <Flex className="gap-2">
-                    <CustomIconButton
-                      onClick={() => history.push(`campaigns/report/${c.id}`)}
-                      ariaLabel="View Analytics"
-                    >
-                      <Analytics />
-                    </CustomIconButton>
-                    <ActionMenu data={c} />
+                <Td className="sticky right-0 " background="neutral0" style={{ paddingInline: 24 }}>
+                  <Flex justifyContent="right" className="gap-2">
+                    {c?.campaign_status !== 'draft' && (
+                      <CustomIconButton
+                        onClick={() => history.push(`campaigns/report/${c.id}`)}
+                        ariaLabel="View Analytics"
+                      >
+                        <Analytics />
+                      </CustomIconButton>
+                    )}
+
+                    <ActionMenu data={c} filters={filters} />
                   </Flex>
                 </Td>
               </Tr>
@@ -220,7 +231,7 @@ const ListView = ({ paginatedCampaigns, handleSortChange, sort, isLoading }) => 
                   <Button
                     variant="secondary"
                     startIcon={<Plus />}
-                    onClick={() => history.push('campaign/create')}
+                    onClick={() => history.push('campaigns/create')}
                   >
                     Create New Campaign
                   </Button>

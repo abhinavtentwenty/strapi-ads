@@ -29,10 +29,10 @@ const FormTextArea = ({
             ...(style || {}),
             ...(disabled
               ? {
-                  backgroundColor: 'white',
                   border: 'none !important',
                   boxShadow: 'none !important',
                   color: '#62627B',
+                  cursor: 'not-allowed',
                 }
               : {}),
           }}

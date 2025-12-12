@@ -135,10 +135,12 @@
 @layer theme {
   :root,
   :host {
-    --font-sans: ui-sans-serif, system-ui, sans-serif, 'Apple Color Emoji', 'Segoe UI Emoji',
+    --font-sans:
+      ui-sans-serif, system-ui, sans-serif, 'Apple Color Emoji', 'Segoe UI Emoji',
       'Segoe UI Symbol', 'Noto Color Emoji';
-    --font-mono: ui-monospace, SFMono-Regular, Menlo, Monaco, Consolas, 'Liberation Mono',
-      'Courier New', monospace;
+    --font-mono:
+      ui-monospace, SFMono-Regular, Menlo, Monaco, Consolas, 'Liberation Mono', 'Courier New',
+      monospace;
     --color-gray-500: hsl(264, 3%, 55%);
     --color-gray-900: hsl(264, 3%, 21%);
     --color-black: #000;
@@ -660,8 +662,8 @@
     @supports (color: color-mix(in lab, red, red)) {
       --tw-gradient-via: color-mix(in oklab, var(--color-black) 40%, transparent);
     }
-    --tw-gradient-via-stops: var(--tw-gradient-position),
-      var(--tw-gradient-from) var(--tw-gradient-from-position),
+    --tw-gradient-via-stops:
+      var(--tw-gradient-position), var(--tw-gradient-from) var(--tw-gradient-from-position),
       var(--tw-gradient-via) var(--tw-gradient-via-position),
       var(--tw-gradient-to) var(--tw-gradient-to-position);
     --tw-gradient-stops: var(--tw-gradient-via-stops);
@@ -788,9 +790,11 @@
       var(--tw-numeric-spacing,) var(--tw-numeric-fraction,);
   }
   .shadow {
-    --tw-shadow: 0 1px 3px 0 var(--tw-shadow-color, rgb(0 0 0 / 0.1)),
+    --tw-shadow:
+      0 1px 3px 0 var(--tw-shadow-color, rgb(0 0 0 / 0.1)),
       0 1px 2px -1px var(--tw-shadow-color, rgb(0 0 0 / 0.1));
-    box-shadow: var(--tw-inset-shadow), var(--tw-inset-ring-shadow), var(--tw-ring-offset-shadow),
+    box-shadow:
+      var(--tw-inset-shadow), var(--tw-inset-ring-shadow), var(--tw-ring-offset-shadow),
       var(--tw-ring-shadow), var(--tw-shadow);
   }
   .filter {
@@ -1218,3 +1222,40 @@
 /* div:has(a + div) {
   width: 100% !important;
 } */
+
+.has-campaign-form,
+.is-campaign-page {
+  position: relative;
+  z-index: 3;
+}
+
+div:has(> .ads-table) {
+  width: 100%;
+  padding-left: 0;
+  padding-right: 0;
+}
+
+.adgm-dashboard-wrapper {
+  min-width: 0;
+}
+
+.accordion-svg path {
+  fill: none !important;
+}
+
+.today-marker::before {
+  content: '';
+  position: absolute;
+  left: 50%;
+  transform: translateX(-50%);
+  width: 7px;
+  height: 7px;
+  border-radius: 50%;
+  background: #4945ff;
+  z-index: 30;
+  top: -6px;
+}
+
+.accordion-header > div > div > div:has(> button) > div {
+  flex-direction: row-reverse;
+}

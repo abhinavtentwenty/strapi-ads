@@ -33,3 +33,8 @@ export const TIMEFRAME_OPTIONS = [
   { label: 'Last 6 Months', value: 'last_6_months' },
   { label: 'Last Year', value: 'last_year' },
 ];
+
+export const GRAPH_TIMEFRAME_OPTIONS = [
+  { label: 'Last 7 Days', value: 'last_7_days' },
+  { label: 'Last 30 Days', value: 'last_30_days' },
+];

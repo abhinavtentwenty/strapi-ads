@@ -12,6 +12,11 @@ import {
   SingleSelectOption,
   MultiSelect,
   MultiSelectOption,
+  Pagination,
+  PreviousLink,
+  PageLink,
+  Dots,
+  NextLink,
 } from '@strapi/design-system';
 import {
   Breadcrumb,
@@ -36,11 +41,27 @@ const CampaignAnalyticsReport = () => {
   const pdfRef = useRef();
   const downloadPdf = useDownloadPdf();
   const { adTypes } = useAdType();
-  const { overallGraph } = useOverallGraph();
-  const { stats } = useAdModuleStats();
   const [status, setStatus] = React.useState(['']);
   const [type, setType] = React.useState('');
-  const [dateRange, setDateRange] = React.useState('');
+  const [page, setPage] = React.useState(1);
+  const [pageSize, setPageSize] = React.useState(10);
+  const [dateRange, setDateRange] = React.useState(''); // Default to empty string for "All Time"
+
+  const { stats } = useAdModuleStats({ page, pageSize, dateRange }); // Pass dateRange to stats hook too
+  const { overallGraph, pagination, isLoading } = useOverallGraph({ page, pageSize, dateRange });
+
+  const currentPage = pagination?.page || 1;
+  const totalPages = pagination?.pageCount || 1;
+
+  React.useEffect(() => {
+    if (currentPage > totalPages && totalPages > 0) setPage(1);
+  }, [totalPages, currentPage]);
+
+  // Reset to page 1 when dateRange changes
+  React.useEffect(() => {
+    setPage(1);
+  }, [dateRange]);
+
   const [isOpenExportReportCsvModal, setIsOpenExportReportCsvModal] = React.useState(false);
   const history = useHistory();
 
@@ -61,7 +82,12 @@ const CampaignAnalyticsReport = () => {
                 <BreadcrumbLink href="/">ADGM</BreadcrumbLink>
               </BreadcrumbItem>
               <BreadcrumbSeparator />
-              <BreadcrumbItem>
+              <BreadcrumbItem
+                style={{ cursor: 'pointer' }}
+                onClick={(e) => {
+                  history.push('campaigns');
+                }}
+              >
                 <BreadcrumbLink>Campaign Management </BreadcrumbLink>
               </BreadcrumbItem>
               <BreadcrumbSeparator />
@@ -112,7 +138,7 @@ const CampaignAnalyticsReport = () => {
             Overall Campaign Stats
           </Typography>
           <Flex gap={3} wrap="wrap" alignItems="center">
-            <MultiSelect value={status} onChange={(value) => setStatus(value)} size="S">
+            {/* <MultiSelect value={status} onChange={(value) => setStatus(value)} size="S">
               {AD_STATUS_OPTIONS.map((status) => (
                 <MultiSelectOption key={status.value} value={status.value}>
                   {status.label}
@@ -128,10 +154,12 @@ const CampaignAnalyticsReport = () => {
                   {type?.title}
                 </SingleSelectOption>
               ))}
-            </SingleSelect>
+            </SingleSelect> */}
             <SingleSelect
               value={dateRange}
-              onChange={(value) => setDateRange(String(value))}
+              onChange={(value) => {
+                setDateRange(String(value));
+              }}
               size="S"
             >
               {TIMEFRAME_OPTIONS.map((timeframe) => (
@@ -142,7 +170,7 @@ const CampaignAnalyticsReport = () => {
             </SingleSelect>
           </Flex>
         </Flex>
-        <Flex marginTop={8} gap={4}>
+        <Flex style={{ marginTop: 8, width: '100% !important' }} gap={4}>
           {stats?.length > 0 && stats?.map((stat) => <DashboardCard key={stat.type} data={stat} />)}
         </Flex>
         <Box padding={6} hasRadius background="neutral0" shadow="filterShadow">
@@ -158,7 +186,7 @@ const CampaignAnalyticsReport = () => {
                     width: '12px',
                     height: '12px',
                     borderRadius: '50%',
-                    backgroundColor: '#F93E00',
+                    backgroundColor: '#104EF5',
                   }}
                 ></span>
                 <Typography
@@ -190,7 +218,13 @@ const CampaignAnalyticsReport = () => {
             </Flex>
           </Flex>
           <Box padding={4} marginTop={4} className="max-h-96">
-            <PerformanceAnalytics data={overallGraph} />
+            {isLoading ? (
+              <Typography textAlign="center" padding={4}>
+                Loading...
+              </Typography>
+            ) : (
+              <PerformanceAnalytics data={overallGraph} />
+            )}
           </Box>
         </Box>
         <Box padding={6} hasRadius background="neutral0" shadow="filterShadow">
@@ -219,10 +253,124 @@ const CampaignAnalyticsReport = () => {
               </Flex>
             </Flex>
           </Flex>
-          <Box padding={4} marginTop={4} className="max-h-96">
-            <ClickThroughRateTrend data={overallGraph} />
+          <Box padding={4} marginTop={4} style={{ maxHeight: '384px' }}>
+            {isLoading ? (
+              <Typography textAlign="center" padding={4}>
+                Loading...
+              </Typography>
+            ) : (
+              <ClickThroughRateTrend data={overallGraph} />
+            )}
           </Box>
         </Box>
+        <Flex
+          alignItems="center"
+          justifyContent="space-between"
+          marginTop={6}
+          style={{ position: 'relative', zIndex: 50 }}
+        >
+          <Flex alignItems="center" gap={2}>
+            <SingleSelect
+              value={String(pageSize)}
+              onChange={(value) => {
+                setPageSize(Number(value));
+                setPage(1);
+              }}
+              size="S"
+            >
+              <SingleSelectOption value={10}>10</SingleSelectOption>
+              <SingleSelectOption value={20}>20</SingleSelectOption>
+              <SingleSelectOption value={50}>50</SingleSelectOption>
+              <SingleSelectOption value={100}>100</SingleSelectOption>
+            </SingleSelect>
+            <Typography variant="pi" textColor="neutral600" className="mr-2">
+              Entries per page:
+            </Typography>
+          </Flex>
+          {/* Pagination */}
+          {totalPages > 1 && (
+            <div className="w-min float-end mt-6">
+              <Pagination activePage={currentPage} pageCount={totalPages}>
+                <PreviousLink
+                  as="button"
+                  onClick={(e) => {
+                    e.preventDefault();
+                    if (currentPage > 1) setPage(currentPage - 1);
+                  }}
+                  disabled={currentPage === 1}
+                  aria-label="Previous page"
+                >
+                  Previous
+                </PreviousLink>
+                {(() => {
+                  const links = [];
+                  let start = Math.max(1, page - 2);
+                  let end = Math.min(totalPages, page + 2);
+                  if (start > 1) {
+                    links.push(
+                      <PageLink
+                        key={1}
+                        number={1}
+                        as="button"
+                        onClick={(e) => {
+                          e.preventDefault();
+                          setPage(1);
+                        }}
+                      >
+                        1
+                      </PageLink>
+                    );
+                    if (start > 2) links.push(<Dots key="dots-start">...</Dots>);
+                  }
+                  for (let i = start; i <= end; i++) {
+                    links.push(
+                      <PageLink
+                        key={i}
+                        number={i}
+                        as="button"
+                        onClick={(e) => {
+                          e.preventDefault();
+                          setPage(i);
+                        }}
+                        aria-current={i === currentPage ? 'page' : undefined}
+                      >
+                        {i}
+                      </PageLink>
+                    );
+                  }
+                  if (end < totalPages) {
+                    if (end < totalPages - 1) links.push(<Dots key="dots-end">...</Dots>);
+                    links.push(
+                      <PageLink
+                        key={totalPages}
+                        number={totalPages}
+                        as="button"
+                        onClick={(e) => {
+                          e.preventDefault();
+                          setPage(totalPages);
+                        }}
+                      >
+                        {totalPages}
+                      </PageLink>
+                    );
+                  }
+                  return links;
+                })()}
+                <NextLink
+                  as="button"
+                  onClick={(e) => {
+                    e.preventDefault();
+                    if (currentPage < totalPages) setPage(currentPage + 1);
+                  }}
+                  disabled={currentPage === totalPages}
+                  aria-label="Next page"
+                >
+                  Next
+                </NextLink>
+              </Pagination>
+            </div>
+          )}
+        </Flex>
       </Flex>
     </div>
   );

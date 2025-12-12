@@ -23,9 +23,6 @@ const useUnpublishOrArchiveAd = () => {
         data: { ad_status: status },
       });
 
-      mutate(['ads']);
-      mutate(['ad', adId]);
-
       toast.success(SUCCESS_MESSAGES[status], {
         icon: <CheckCircle color="success500" />,
         position: 'top-center',

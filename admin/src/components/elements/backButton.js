@@ -9,7 +9,7 @@ function BackButton() {
 
   return (
     <Flex
-      as="button"
+      // as="button"
       aria-label="Go back"
       style={{ cursor: 'pointer', marginBottom: '1rem' }}
       gap={2}

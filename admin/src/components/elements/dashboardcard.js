@@ -1,5 +1,6 @@
 import { Flex, GridItem, Typography } from '@strapi/design-system';
 import React from 'react';
+import { formatNumber } from '../../utils/utils';
 
 const DashboardCard = ({ data }) => {
   const showDelta = data.delta !== 0 && Math.abs(data.delta) !== Math.abs(data.total);
@@ -7,12 +8,12 @@ const DashboardCard = ({ data }) => {
 
   return (
     <GridItem
-      col={3}
+      col={1}
       background="neutral0"
       hasRadius
       shadow="tableShadow"
       padding={4}
-      style={{ minHeight: 128 }}
+      style={{ minHeight: 128, minWidth: 200, width: '100%' }}
       className="flex flex-col gap-2.5 size-full"
     >
       <Flex justifyContent="space-between" alignItems="unset">
@@ -21,7 +22,7 @@ const DashboardCard = ({ data }) => {
         </Typography>
       </Flex>
       <Typography variant="alpha" fontWeight="bold" as="p">
-        {data.total}
+        {formatNumber(data.total)}
         {data?.type === 'ctr' ? '%' : ''}
       </Typography>
       {showDelta && (
@@ -30,8 +31,9 @@ const DashboardCard = ({ data }) => {
           fontWeight="bold"
           textColor={isPositive ? 'success500' : 'danger500'}
           textTransform="uppercase"
+          style={{ whiteSpace: 'nowrap' }}
         >
-          {`${isPositive ? '+' : ''}${data.delta} ${data.text}`}
+          {`${isPositive ? '+' : ''}${formatNumber(data.delta)} ${data.text}`}
         </Typography>
       )}
     </GridItem>

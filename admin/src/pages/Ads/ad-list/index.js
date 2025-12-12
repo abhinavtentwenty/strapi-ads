@@ -1,47 +1,48 @@
 // @ts-nocheck
-import React, { useState, useEffect } from 'react';
-import { useHistory } from 'react-router-dom';
 import {
+  Badge,
+  Box,
   Button,
+  Combobox,
+  ComboboxOption,
+  Flex,
+  MultiSelect,
+  MultiSelectOption,
+  NextLink,
+  PageLink,
+  Pagination,
+  PreviousLink,
   Searchbar,
   SingleSelect,
   SingleSelectOption,
-  MultiSelect,
-  MultiSelectOption,
   Table,
   Tbody,
   Td,
   Th,
   Thead,
   Tr,
-  Badge,
-  Box,
-  Flex,
   Typography,
-  Combobox,
-  ComboboxOption,
-  NextLink,
-  PageLink,
-  Pagination,
-  PreviousLink,
 } from '@strapi/design-system';
-import { format } from 'date-fns';
-import { CarretDown, CarretUp } from '@strapi/icons';
-import CustomIconButton from '../../../components/elements/customIconButton';
-import Analytics from '../../../components/Icons/Analytics';
-import AdActionMenu from '../adActionMenu';
-import BadgeCustom from '../../../components/elements/badge';
-import useAds from '../../../components/hooks/useAds';
-import useCampaigns from '../../../components/hooks/useCampaigns';
-import useAdType from '../../../components/hooks/useAdType';
-import { AD_STATUS_OPTIONS } from '../../../utils/constants';
-import StatusBadge from '../../../components/elements/statusBadge';
-import CustomBadge from '../../../components/elements/badge';
 import { useFetchClient } from '@strapi/helper-plugin';
+import { CarretDown, CarretUp } from '@strapi/icons';
+import { format } from 'date-fns';
 import qs from 'qs';
+import React, { useEffect, useState } from 'react';
+import { useHistory } from 'react-router-dom';
+import CustomBadge from '../../../components/elements/badge';
+import CustomIconButton from '../../../components/elements/customIconButton';
+import StatusBadge from '../../../components/elements/statusBadge';
+import useAds from '../../../components/hooks/useAds';
+import useAdType from '../../../components/hooks/useAdType';
+import useCampaigns from '../../../components/hooks/useCampaigns';
+import Analytics from '../../../components/Icons/Analytics';
 import pluginId from '../../../pluginId';
+import { AD_STATUS_OPTIONS } from '../../../utils/constants';
+import { truncate } from '../../../utils/utils';
+import ExportReportCsvModal from '../../Campaign/components/exportReportCsvModal';
+import AdActionMenu from '../adActionMenu';
 
-const TrStyles = 'text-xl text-[#62627B] uppercase font-bold';
+const TrStyles = 'text-xl uppercase font-bold';
 const TdStyles = 'text-2xl';
 
 const AdList = () => {
@@ -50,16 +51,17 @@ const AdList = () => {
 
   const [campaign, setCampaign] = useState('');
   const [status, setStatus] = useState(['']);
-  const [filter, setFilter] = useState('');
+  const [campaignSearch, setCampaignSearch] = useState('');
   const [type, setType] = useState('');
   const [search, setSearch] = useState('');
+  const [isOpenExportReportCsvModal, setIsOpenExportReportCsvModal] = React.useState(false);
 
   const [page, setPage] = useState(1);
   const [pageSize, setPageSize] = useState(10);
 
   const [sort, setSort] = useState({ field: 'ad_name', order: 'ASC' });
 
-  const { ads, pagination, isLoading } = useAds({
+  const { ads, pagination, isLoading, mutate } = useAds({
     page,
     pageSize,
     status,
@@ -83,6 +85,7 @@ const AdList = () => {
   const { campaigns, pagination: campaignPagination } = useCampaigns({
     page: activeCampaignPage ?? 1,
     pageSize: 10,
+    search: campaignSearch,
   });
 
   React.useEffect(() => {
@@ -114,9 +117,28 @@ const AdList = () => {
     if (currentPage > totalPages) setPage(1);
   }, [totalPages]);
 
-  const filteredCampaignOptions = activeCampaignPageOptions.filter((c) =>
-    c.value.toLowerCase().includes(filter.toLowerCase())
-  );
+  const handleRowClick = (event, adId, campaignId) => {
+    // Prevent navigation if clicking on buttons or interactive elements
+    const target = event.target;
+    const isInteractiveElement =
+      target.closest('button') || target.closest('a') || target.closest('[role="button"]');
+
+    if (!isInteractiveElement) {
+      history.push(`campaigns/view/${campaignId}?ad=${adId}`);
+    }
+  };
+
+  useEffect(() => {
+    const pageWrapper = document.querySelector('.page-wrapper');
+    const target = pageWrapper?.parentElement?.parentElement;
+    const className = 'adgm-dashboard-wrapper';
+
+    if (target) target.classList.add(className);
+
+    return () => {
+      if (target) target.classList.remove(className);
+    };
+  }, []);
 
   const handleDownloadCSV = async () => {
     try {
@@ -144,7 +166,12 @@ const AdList = () => {
   };
 
   return (
-    <div>
+    <div className="page-wrapper">
+      <ExportReportCsvModal
+        isOpen={isOpenExportReportCsvModal}
+        setIsOpen={setIsOpenExportReportCsvModal}
+        onSubmit={handleDownloadCSV}
+      />
       <Flex justifyContent="space-between" alignItems="center" mb={4}>
         <Flex direction="column" alignItems="flex-start">
           <Typography variant="alpha" className="h1 font-semibold" textColor="neutral900">
@@ -154,7 +181,7 @@ const AdList = () => {
             Abu Dhabi Global Market - Ads
           </Typography>
         </Flex>
-        <Button size="L" variant="tertiary" onClick={handleDownloadCSV}>
+        <Button size="L" variant="tertiary" onClick={() => setIsOpenExportReportCsvModal(true)}>
           Export CSV
         </Button>
       </Flex>
@@ -193,19 +220,26 @@ const AdList = () => {
                 value={campaign}
                 onChange={(v) => {
                   setCampaign(v);
-                  setPage(1); // Reset page to 1
+                  setPage(1);
                 }}
-                filterValue={filter}
-                onFilterValueChange={(v) => setFilter(v ?? '')}
+                filterValue={campaignSearch} // Change from filter
+                onFilterValueChange={(v) => {
+                  setCampaignSearch(v ?? '');
+                  setActiveCampaignPage(1);
+                }} // Change from setFilter
               >
                 <ComboboxOption key={0} value="">
                   All Campaigns
                 </ComboboxOption>
-                {filteredCampaignOptions.map((c) => (
-                  <ComboboxOption key={c.id} value={c.id}>
-                    {c.value}
-                  </ComboboxOption>
-                ))}
+                {campaigns?.map(
+                  (
+                    c // Change from filteredCampaignOptions
+                  ) => (
+                    <ComboboxOption key={c.id} value={c.id}>
+                      {c.campaign_name}
+                    </ComboboxOption>
+                  )
+                )}
                 {activeCampaignPage < campaignPagination?.pageCount && (
                   <Button
                     style={{ width: '100%' }}
@@ -222,6 +256,11 @@ const AdList = () => {
                   setStatus(value);
                   setPage(1); // Reset page to 1
                 }}
+                customizeContent={(value) =>
+                  value
+                    .map((v) => AD_STATUS_OPTIONS.find((opt) => opt.value === v)?.label)
+                    .join(', ')
+                }
               >
                 {AD_STATUS_OPTIONS.map((status) => (
                   <MultiSelectOption key={status.value} value={status.value}>
@@ -248,10 +287,10 @@ const AdList = () => {
             </Flex>
           </Flex>
         </div>
-        <Table colCount={7} rowCount={ads.length + 1}>
+        <Table colCount={7} rowCount={ads.length + 1} className="ads-table w-max min-w-full">
           <Thead>
             <Tr className={TrStyles}>
-              <Th onClick={() => handleSortChange('ad_name')}>
+              <Th onClick={() => handleSortChange('ad_name')} style={{ paddingInline: 24 }}>
                 <div className="flex gap-2 items-center cursor-pointer">
                   <Typography variant="pi" fontWeight="bold" textColor="neutral700">
                     Ad
@@ -340,7 +379,7 @@ const AdList = () => {
                   CTR
                 </Typography>
               </Th>
-              <Th>
+              <Th className="sticky right-0 px-6" background="neutral0">
                 <Typography variant="pi" fontWeight="bold" textColor="neutral700">
                   Action
                 </Typography>
@@ -350,9 +389,12 @@ const AdList = () => {
           <Tbody>
             {ads.length > 0 ? (
               ads.map((ad, idx) => (
-                <Tr key={idx}>
-                  /* Campaign name and ID */
-                  <Td className={TdStyles}>
+                <Tr
+                  key={idx}
+                  onClick={(e) => handleRowClick(e, ad.id, ad.campaign?.id)}
+                  style={{ cursor: 'pointer' }}
+                >
+                  <Td className={TdStyles} style={{ paddingInline: 24 }}>
                     <div
                       className="flex items-center gap-2"
                       style={{
@@ -365,7 +407,7 @@ const AdList = () => {
                         style={{ width: 44, height: 44, borderRadius: 6 }}
                       />
                       <div className="flex flex-col gap-1">
-                        <p className="text-sm font-normal leading-5">{ad?.ad_name}</p>
+                        <p className="text-sm font-normal leading-5">{truncate(ad?.ad_name, 20)}</p>
                         <div className=" flex items-center gap-1">
                           {ad?.ad_type && (
                             <CustomBadge variant="draft">{ad.ad_type?.title}</CustomBadge>
@@ -404,31 +446,49 @@ const AdList = () => {
                   </Td>
                   <Td className={TdStyles}>
                     <Typography as="span" variant="epsilon">
-                      {ad?.total_impressions ?? ''}
+                      {ad?.total_impressions ?? 0}
                     </Typography>
                   </Td>
                   <Td className={TdStyles}>
                     <Typography as="span" variant="epsilon">
-                      {ad?.total_clicks ?? ''}
+                      {ad?.total_clicks ?? 0}
                     </Typography>
                   </Td>
                   <Td className={TdStyles}>
                     <Typography as="span" variant="epsilon">
                       {ad?.total_clicks && ad?.total_impressions
-                        ? `${(ad?.total_clicks / ad?.total_impressions) * 100}%`
+                        ? `${((ad?.total_clicks / ad?.total_impressions) * 100).toFixed(2)}%`
                         : '0%'}
                     </Typography>
                   </Td>
                   {/* Action menu for campaign */}
-                  <Td>
-                    <Flex className="gap-2">
-                      <CustomIconButton
-                        onClick={() => history.push(`ads/report/${ad.id}`)}
-                        ariaLabel="View Analytics"
-                      >
-                        <Analytics />
-                      </CustomIconButton>
-                      <AdActionMenu data={ad} />
+                  <Td
+                    className="sticky right-0"
+                    background="neutral0"
+                    style={{ paddingInline: 24 }}
+                  >
+                    <Flex justifyContent="right" className="gap-2">
+                      {ad?.ad_status !== 'draft' && ad?.campaign?.campaign_status !== 'draft' && (
+                        <CustomIconButton
+                          onClick={() => history.push(`ads/report/${ad.id}`)}
+                          ariaLabel="View Analytics"
+                        >
+                          <Analytics />
+                        </CustomIconButton>
+                      )}
+                      <AdActionMenu
+                        data={ad}
+                        onStatusChange={() => mutate()}
+                        filters={{
+                          page,
+                          pageSize,
+                          status,
+                          type,
+                          search,
+                          campaign,
+                          sort,
+                        }}
+                      />
                     </Flex>
                   </Td>
                 </Tr>

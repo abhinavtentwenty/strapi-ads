@@ -18,12 +18,18 @@ const useAd = (id) => {
     { encodeValuesOnly: true }
   );
 
-  const { data, error, isLoading, mutate } = useSWR(['ad', id], () =>
-    get(`/${pluginId}/ad/get/${id}?${query}`)
+  const { data, error, isLoading, mutate } = useSWR(
+    id ? ['ad', id] : null, // Only fetch if id exists
+    () => get(`/${pluginId}/ad/get/${id}?${query}`),
+    {
+      revalidateOnFocus: false,
+      revalidateOnReconnect: false,
+      dedupingInterval: 2000,
+    }
   );
 
   return {
-    ad: data?.data || {},
+    ad: data?.data || null,
     isLoading,
     isError: !!error,
     error,

@@ -58,7 +58,7 @@
       "type": "string"
     },
     "ad_external_url": {
-      "type": "string"
+      "type": "text"
     },
     "ad_destination_models": {
       "type": "enumeration",

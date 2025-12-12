@@ -1,7 +1,7 @@
 // @ts-nocheck
 import React, { useRef } from 'react';
 import { useHistory, useParams } from 'react-router-dom';
-
+import pluginId from '../../../pluginId';
 import {
   Typography,
   Flex,
@@ -12,6 +12,11 @@ import {
   SingleSelectOption,
   MultiSelect,
   MultiSelectOption,
+  Pagination,
+  PreviousLink,
+  PageLink,
+  Dots,
+  NextLink,
 } from '@strapi/design-system';
 import {
   Breadcrumb,
@@ -39,13 +44,33 @@ const CampaignReport = () => {
   const { id } = useParams();
   const pdfRef = useRef();
   const downloadPdf = useDownloadPdf();
-  const { campaignGraph } = useCampaignGraph({ id: Number(id) });
   const { campaign } = useCampaignDetails(Number(id));
   const { adTypes } = useAdType();
   const { stats } = useCampaignStats(Number(id));
   const [status, setStatus] = React.useState(['']);
   const [type, setType] = React.useState('');
   const [dateRange, setDateRange] = React.useState('');
+  const [page, setPage] = React.useState(1);
+  const [pageSize, setPageSize] = React.useState(10);
+  const { campaignGraph, pagination, isLoading } = useCampaignGraph({
+    id: Number(id),
+    dateRange,
+    page,
+    pageSize,
+  });
+
+  const currentPage = pagination?.page || 1;
+  const totalPages = pagination?.pageCount || 1;
+
+  React.useEffect(() => {
+    if (currentPage > totalPages && totalPages > 0) setPage(1);
+  }, [totalPages, currentPage]);
+
+  // Reset to page 1 when dateRange changes
+  React.useEffect(() => {
+    setPage(1);
+  }, [dateRange]);
+
   const history = useHistory();
 
   return (
@@ -55,8 +80,9 @@ const CampaignReport = () => {
         <Flex direction="column" alignItems="flex-start">
           <Flex gap={2}>
             <p className="text-xs text-[#62627B] font-normal">
-              {format(new Date(campaign?.min_date ?? '2024-12-31'), 'MM/dd/yy')} -{' '}
-              {format(new Date(campaign?.max_date ?? '2024-12-31'), 'MM/dd/yy')}
+              {campaign?.min_date && format(new Date(campaign?.min_date), 'MM/dd/yy')}
+              {campaign?.max_date && ' - '}{' '}
+              {campaign?.max_date && format(new Date(campaign?.max_date), 'MM/dd/yy')}
             </p>
             <StatusBadge status={campaign?.campaign_status} />
           </Flex>
@@ -68,10 +94,22 @@ const CampaignReport = () => {
               </BreadcrumbItem>
               <BreadcrumbSeparator />
               <BreadcrumbItem>
-                <BreadcrumbLink>Campaign Management </BreadcrumbLink>
+                <BreadcrumbLink
+                  style={{ cursor: 'pointer' }}
+                  onClick={(e) => {
+                    history.push(`/plugins/${pluginId}/campaigns`);
+                  }}
+                >
+                  Campaign Management{' '}
+                </BreadcrumbLink>
               </BreadcrumbItem>
               <BreadcrumbSeparator />
-              <BreadcrumbItem>
+              <BreadcrumbItem
+                style={{ cursor: 'pointer' }}
+                onClick={(e) => {
+                  history.push(`/plugins/${pluginId}/campaigns/view/${campaign?.id}`);
+                }}
+              >
                 <BreadcrumbLink>{campaign?.campaign_name} </BreadcrumbLink>
               </BreadcrumbItem>
               <BreadcrumbSeparator />
@@ -141,9 +179,9 @@ const CampaignReport = () => {
             </SingleSelect>
           </Flex>
         </Flex>
-        <Grid marginTop={8} gap={4}>
+        <Flex style={{ marginTop: 8, width: '100% !important' }} gap={4}>
           {stats?.length > 0 && stats?.map((stat) => <DashboardCard key={stat.type} data={stat} />)}
-        </Grid>
+        </Flex>
         <Box padding={6} hasRadius background="neutral0" shadow="filterShadow">
           <Flex direction="row" alignItems="center" justifyContent="space-between">
             <Typography variant="beta" fontWeight="semi-bold" textColor="neutral900">
@@ -157,7 +195,7 @@ const CampaignReport = () => {
                     width: '12px',
                     height: '12px',
                     borderRadius: '50%',
-                    backgroundColor: '#F93E00',
+                    backgroundColor: '#104EF5',
                   }}
                 ></span>
                 <Typography
@@ -189,7 +227,13 @@ const CampaignReport = () => {
             </Flex>
           </Flex>
           <Box padding={4} marginTop={4} className="max-h-96">
-            <PerformanceAnalytics data={campaignGraph} />
+            {isLoading ? (
+              <Typography textAlign="center" padding={4}>
+                Loading...
+              </Typography>
+            ) : (
+              <PerformanceAnalytics data={campaignGraph} />
+            )}
           </Box>
         </Box>
         <Box padding={6} hasRadius background="neutral0" shadow="filterShadow">
@@ -219,9 +263,123 @@ const CampaignReport = () => {
             </Flex>
           </Flex>
           <Box padding={4} marginTop={4} className="max-h-96">
-            <ClickThroughRateTrend data={campaignGraph} />
+            {isLoading ? (
+              <Typography textAlign="center" padding={4}>
+                Loading...
+              </Typography>
+            ) : (
+              <ClickThroughRateTrend data={campaignGraph} />
+            )}
           </Box>
         </Box>
+        <Flex
+          alignItems="center"
+          justifyContent="space-between"
+          marginTop={6}
+          style={{ position: 'relative', zIndex: 50 }}
+        >
+          <Flex alignItems="center" gap={2}>
+            <SingleSelect
+              value={String(pageSize)}
+              onChange={(value) => {
+                setPageSize(Number(value));
+                setPage(1);
+              }}
+              size="S"
+            >
+              <SingleSelectOption value={10}>10</SingleSelectOption>
+              <SingleSelectOption value={20}>20</SingleSelectOption>
+              <SingleSelectOption value={50}>50</SingleSelectOption>
+              <SingleSelectOption value={100}>100</SingleSelectOption>
+            </SingleSelect>
+            <Typography variant="pi" textColor="neutral600" className="mr-2">
+              Entries per page:
+            </Typography>
+          </Flex>
+          {/* Pagination */}
+          {totalPages > 1 && (
+            <div className="w-min float-end mt-6">
+              <Pagination activePage={currentPage} pageCount={totalPages}>
+                <PreviousLink
+                  as="button"
+                  onClick={(e) => {
+                    e.preventDefault();
+                    if (currentPage > 1) setPage(currentPage - 1);
+                  }}
+                  disabled={currentPage === 1}
+                  aria-label="Previous page"
+                >
+                  Previous
+                </PreviousLink>
+                {(() => {
+                  const links = [];
+                  let start = Math.max(1, page - 2);
+                  let end = Math.min(totalPages, page + 2);
+                  if (start > 1) {
+                    links.push(
+                      <PageLink
+                        key={1}
+                        number={1}
+                        as="button"
+                        onClick={(e) => {
+                          e.preventDefault();
+                          setPage(1);
+                        }}
+                      >
+                        1
+                      </PageLink>
+                    );
+                    if (start > 2) links.push(<Dots key="dots-start">...</Dots>);
+                  }
+                  for (let i = start; i <= end; i++) {
+                    links.push(
+                      <PageLink
+                        key={i}
+                        number={i}
+                        as="button"
+                        onClick={(e) => {
+                          e.preventDefault();
+                          setPage(i);
+                        }}
+                        aria-current={i === currentPage ? 'page' : undefined}
+                      >
+                        {i}
+                      </PageLink>
+                    );
+                  }
+                  if (end < totalPages) {
+                    if (end < totalPages - 1) links.push(<Dots key="dots-end">...</Dots>);
+                    links.push(
+                      <PageLink
+                        key={totalPages}
+                        number={totalPages}
+                        as="button"
+                        onClick={(e) => {
+                          e.preventDefault();
+                          setPage(totalPages);
+                        }}
+                      >
+                        {totalPages}
+                      </PageLink>
+                    );
+                  }
+                  return links;
+                })()}
+                <NextLink
+                  as="button"
+                  onClick={(e) => {
+                    e.preventDefault();
+                    if (currentPage < totalPages) setPage(currentPage + 1);
+                  }}
+                  disabled={currentPage === totalPages}
+                  aria-label="Next page"
+                >
+                  Next
+                </NextLink>
+              </Pagination>
+            </div>
+          )}
+        </Flex>
       </Flex>
     </div>
   );

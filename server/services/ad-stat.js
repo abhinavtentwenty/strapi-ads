@@ -17,11 +17,16 @@ module.exports = createCoreService(modelName, ({ strapi }) => ({
             const adExists = await strapi.db.query('plugin::strapi-ads.ad').findOne({ where: { id: ad_id } });
             if (!adExists) return {ad_id, not_found: true};
 
-            const yesterday = format(subDays(new Date(), 1), 'yyyy-MM-dd');
-            const previousDayStats = await strapi.db.query(modelName).findOne({
-                where: { ad_id, stat_date: yesterday },
-                fields: ['total_impressions', 'total_clicks']
+            const previousDayStatsArray = await strapi.entityService.findMany(modelName, {
+                filters: {
+                    ad_id,
+                    stat_date: { $lt: today }
+                },
+                fields: ['total_impressions', 'total_clicks'],
+                sort: { stat_date: 'desc' },
+                limit: 1
             });
+            const previousDayStats = previousDayStatsArray[0] || null;
 
             const previousTotalImpressions = Number(previousDayStats?.total_impressions || 0);
             const previousTotalClicks = Number(previousDayStats?.total_clicks || 0);
